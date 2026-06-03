@@ -103,7 +103,7 @@ CREATE TABLE `system_settings` (
 --
 
 INSERT INTO `system_settings` (`setting_key`, `setting_value`, `snipeit_url`, `snipeit_token`) VALUES
-('app_name', 'Hardware Stock Dashboard', 'http://10.6.12.144:8080', 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJhdWQiOiIxIiwianRpIjoiNThiNDgyNzdmMDIyMDM1NDBmNjZlNGM3MDNmYzFlOWEyNzYxNmNiMGNhZjUyOGU4NDU5N2RiMjMxNzQzZWM5Yzk3YTVlMjFkM2ZiNGQ5YzEiLCJpYXQiOjE3Nzg5NTU1NjUuNjQzMzM4LCJuYmYiOjE3Nzg5NTU1NjUuNjQzMzQsImV4cCI6MzA0MTI1OTU2NS42MzI2OTQsInN1YiI6IjEiLCJzY29wZXMiOltdfQ.bCmleO5d_z3_fewJXkVpgpKOTcRfk59rpFH_bVEun0k9qsQlV_9_7tstkF8uPlFLUOOCpFB0uELr4JzD455F5R5D2tL09_sWHXUC3bhf_LNOdIEuFCfQd_2etjrVKMNHknJISh0ZdpUCPF2wyYX7ZvBvcBjh8Ka3GFaTSu-YGsgkeVzR4Zjk3TkLBuZHuP6qBuPDBRuVOdveia8ibAddX3BZ5ED8JKxb5FvKZnF54hWUN23iP_nJgnKGIoQ1erQFqZRUiQ_EM58gK2MjfzHIA6cgec8qjlBR3-BfuxGMK4eNb3FgWhIrjIGt5-CgC0kfSDe9UvNNJn0u_pVX2T-ZK41P-8D3VjIkdDC1pM-dmUhRJfc2JrfpryZHGevIkj387RUWuR89tpjN1knZkZMvshMQKgMTWTm4uByMTzHvVEq6oAOyw3Nk9mT4te2GtdHkmlmk_iYgbs1Fxs6-8MNSV8Zyxtwz22QCMG1K5-c3oEFL885tkkfZuWWecMxMM_6w64HgNmLNzTF-EmsHfyZa9NYfGXkDaMfJQxnLkKxXV7NLGm50c_f9LOizwXLM8U_xU0Bw9GPv9lYzV-rGDkjvpL_Q-JHLUi0UhVOvuwZQW_4hjlvpZkywpCb1jo9CRn9EUUE7sB-isthBK3mcxUYyoc7mqefqrpGkVr2sCUj1mJM'),
+('app_name', 'Hardware Stock Dashboard',
 ('company_name', 'Amity-IT', NULL, NULL),
 ('low_stock_threshold', '1', NULL, NULL);
 
