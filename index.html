@@ -1,0 +1,3117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hardware Stock Dashboard</title>
+
+  <link rel="icon" type="image/png" href="tab-logo.png?v=3">
+  <link rel="apple-touch-icon" href="tab-logo.png?v=3">
+
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0ea5e9">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+ <style>
+ :root {
+  /* Core Colors */
+  --bg-body: #090e17; 
+  --sidebar-bg: rgba(15, 23, 42, 0.6); 
+  --card-bg: rgba(30, 41, 59, 0.4); 
+  --border-color: rgba(255, 255, 255, 0.08);
+  
+  /* Text */
+  --text-main: #f8fafc; 
+  --text-muted: #94a3b8; 
+  
+  /* Accents */
+  --accent: #0ea5e9;
+  --accent-glow: rgba(14, 165, 233, 0.4);
+  --success: #10b981; 
+  --danger: #ef4444; 
+  --warning: #f59e0b;
+  
+  /* Transitions */
+  --smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* --- EXTENDED VARIABLES FOR THEME SWITCHING --- */
+:root {
+    --input-bg: rgba(0, 0, 0, 0.2);
+    --table-header: rgba(15, 23, 42, 1); /* 👈 Changed from 0.9 to 1 */
+    --table-hover: rgba(255, 255, 255, 0.03);
+    --modal-bg: rgba(30, 41, 59, 0.95);
+}
+
+/* --- LIGHT THEME OVERRIDES --- */
+[data-theme="light"] {
+    --bg-body: #f0f4f8; 
+    --sidebar-bg: rgba(255, 255, 255, 0.7); 
+    --card-bg: rgba(255, 255, 255, 0.6); 
+    --border-color: rgba(0, 0, 0, 0.1);
+    --text-main: #0f172a; 
+    --text-muted: #475569; 
+    --input-bg: rgba(255, 255, 255, 0.8);
+    --table-header: rgba(241, 245, 249, 1); /* 👈 Changed from 0.9 to 1 */
+    --table-hover: rgba(0, 0, 0, 0.03);
+    --modal-bg: rgba(255, 255, 255, 0.95);
+}
+/* --- Clean Row-Only Lines for Light Mode Tables --- */
+/* Modern Flat Buttons for Light Mode */
+[data-theme="light"] .btn-primary { 
+    background: #0ea5e9 !important; 
+    box-shadow: 0 4px 10px rgba(14, 165, 233, 0.2) !important; 
+}
+[data-theme="light"] .btn-primary:hover { 
+    background: #0284c7 !important; /* Slightly darker blue on hover */
+}
+[data-theme="light"] .btn-danger {
+    background: #ef4444 !important;
+    box-shadow: 0 4px 10px rgba(239, 68, 68, 0.2) !important;
+}
+[data-theme="light"] table {
+    border: none; /* Removes the harsh box around the whole table */
+}
+
+[data-theme="light"] th, 
+[data-theme="light"] td {
+    border: none !important; /* Removes the vertical column lines */
+    border-bottom: 1px solid var(--border-color) !important; /* Keeps the clean horizontal row lines */
+}
+
+[data-theme="light"] body {
+    background-image: 
+    radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.15), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.15), transparent 25%);
+}
+/* --- Fix Sidebar Hover in Light Mode --- */
+[data-theme="light"] .nav-item:hover {
+    background: rgba(0, 0, 0, 0.05); /* Slight dark gray highlight */
+    color: var(--accent); /* Turns the text neon blue on hover! */
+}
+
+
+/* --- TOGGLE SWITCH UI --- */
+.theme-switch-wrapper {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; margin-top: 10px; border-top: 1px solid var(--border-color);
+}
+.switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0,0,0,0.3); transition: .4s; border-radius: 24px; border: 1px solid var(--border-color); }
+.slider:before { position: absolute; content: "🌙"; display: flex; align-items: center; justify-content: center; font-size: 12px; height: 18px; width: 18px; left: 2px; bottom: 2px; background-color: var(--card-bg); transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(20px); content: "☀️"; }
+
+* { box-sizing: border-box; }
+
+/* FIX: OPTIMIZED BODY FOR DESKTOP & MOBILE */
+body {
+  margin: 0; min-height: 100vh; font-family: "Inter", sans-serif; color: var(--text-main); 
+  background-color: var(--bg-body); 
+  background-image: 
+    radial-gradient(circle at 15% 50%, rgba(14, 165, 233, 0.08), transparent 25%),
+    radial-gradient(circle at 85% 30%, rgba(99, 102, 241, 0.08), transparent 25%);
+  background-attachment: fixed;
+  display: flex;
+  -webkit-tap-highlight-color: transparent;
+  zoom: 100%;
+}
+
+/* ADMIN FEATURES VISIBILITY */
+.bulk-select-col, .admin-btn { display: none !important; }
+body.is-admin .bulk-select-col { display: table-cell !important; }
+body.is-admin .admin-btn { display: inline-flex !important; }
+
+/* LAYOUT & LOGIN */
+.login-screen { 
+    position: fixed; inset: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; 
+    background: linear-gradient(to bottom, rgba(9, 14, 23, 0.85), rgba(9, 14, 23, 0.95)),
+    url('https://distanceeducationschool.com/wp-content/uploads/2024/08/amity-university-page.webp');
+    background-size: cover; background-position: center;
+}
+
+.login-card { 
+    width: 100%; max-width: 400px; padding: 45px; 
+    background: rgba(30, 41, 59, 0.4) !important; border-radius: 24px; border: 1px solid var(--border-color); 
+    backdrop-filter: blur(20px) saturate(180%) !important; box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.9) !important; 
+    animation: slideUp 0.5s ease-out;
+}
+
+.login-logo-img {
+    max-width: 80px; height: auto; margin-bottom: 20px;
+    filter: drop-shadow(0 0 15px var(--accent-glow));
+}
+
+@keyframes slideInRow { 
+    from { opacity: 0; transform: translateY(10px); } 
+    to { opacity: 1; transform: translateY(0); } 
+}
+
+/* --- SIDEBAR STYLES (MERGED) --- */
+.sidebar { 
+    width: 260px; 
+    background: var(--sidebar-bg); 
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-right: 1px solid var(--border-color); 
+    display: flex; 
+    flex-direction: column; 
+    height: 100vh; 
+    position: fixed;
+    top: 0; left: 0; z-index: 9999;
+    transition: transform var(--smooth);
+}
+
+.sidebar-top { padding: 24px; flex-shrink: 0; }
+.sidebar-middle { flex: 1; overflow-y: auto; padding: 0 16px; }
+.sidebar-middle::-webkit-scrollbar { width: 5px; }
+.sidebar-middle::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 10px; }
+.sidebar-middle::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.2); }
+.sidebar-bottom { padding: 24px; flex-shrink: 0; margin-top: auto; background: rgba(0,0,0,0.2); border-top: 1px solid var(--border-color); }
+
+.brand { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--border-color); }
+.brand img { height: 40px; border-radius: 10px; box-shadow: 0 4px 12px var(--accent-glow); }
+.brand-text { font-weight: 700; font-size: 16px; letter-spacing: 0.5px; }
+
+.nav-menu { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 4px; }
+.nav-item { padding: 14px 16px; border-radius: 12px; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; gap: 14px; transition: var(--smooth); font-size: 14px; font-weight: 500; }
+.nav-item:hover { background: rgba(255,255,255,0.05); color: #fff; transform: translateX(4px); }
+.nav-item.active { background: rgba(14, 165, 233, 0.1) !important; color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+
+.user-profile { padding-top: 10px; }
+
+/* Inventory Selector Colors */
+#inventoryTypeSelector option[value="hardware"] { background: rgba(14, 165, 233, 0.1); }
+#inventoryTypeSelector option[value="consumable"] { background: rgba(16, 185, 129, 0.1); }
+#inventoryTypeSelector option[value="scrap"] { background: rgba(245, 158, 11, 0.1); }
+
+/* UI ELEMENTS */
+.logout-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; padding: 12px; margin-top: 15px; background: rgba(239, 68, 68, 0.15); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 13px; transition: var(--smooth); letter-spacing: 0.5px; }
+.logout-btn:hover { background: rgba(239, 68, 68, 0.25); transform: translateY(-2px); box-shadow: 0 4px 12px rgba(239, 68, 68, 0.2); }
+
+/* MAIN CONTENT AREA */
+.main-content, .app-main { flex: 1; margin-left: 260px; padding: 40px; overflow-y: auto; overflow-x: auto; width: calc(100% - 260px); transition: margin-left 0.3s ease, width 0.3s ease; }
+.page-header { margin-bottom: 32px; display: flex; justify-content: space-between; align-items: center; }
+.page-title { font-size: 28px; font-weight: 700; margin: 0; letter-spacing: -0.5px; }
+
+/* CARDS & GLASSMORPHISM */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 30px; }
+.chart-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; margin-bottom: 30px; }
+
+.stat-card, .chart-card, .content-card {
+    background: var(--card-bg) !important;
+    backdrop-filter: blur(16px) saturate(180%) !important;
+    border: 1px solid var(--border-color) !important;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2) !important;
+    border-radius: 16px;
+}
+
+.stat-card { padding: 24px; display: flex; justify-content: space-between; align-items: center; transition: var(--smooth); }
+.stat-card:hover { transform: translateY(-5px); border-color: rgba(255,255,255,0.15) !important; box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.3) !important; }
+.stat-lbl { font-size: 13px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+.stat-val { font-size: 36px; font-weight: 700; color: var(--text-main); margin-top: 8px; line-height: 1; }
+
+.chart-card { padding: 24px; height: 420px; display: flex; flex-direction: column; }
+.content-card { padding: 32px; margin-bottom: 24px; background-color: transparent !important; z-index: 50; }
+
+/* FORMS */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+label { display: block; font-size: 12px; color: var(--text-muted) !important; margin-bottom: 8px; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; opacity: 1 !important; }
+input, select, textarea { width: 100%; padding: 14px; border-radius: 10px; border: 1px solid var(--border-color) !important; background-color: var(--input-bg) !important; color: var(--text-main) !important; outline: none; margin-bottom: 20px; font-size: 14px; font-family: inherit; transition: var(--smooth); opacity: 1 !important; }
+input:focus, select:focus, textarea:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent-glow) !important; background-color: var(--input-bg) !important; }
+/* TABLES */
+.table-responsive { 
+    width: 100%; 
+    max-height: 65vh; /* 65% of the screen height, perfectly forces inner scroll */
+    overflow-y: auto; 
+    overflow-x: auto; 
+    border-radius: 16px; 
+    border: 1px solid var(--border-color); 
+    background: var(--card-bg); 
+}
+
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 100%; }
+
+/* Main Header Row */
+th { 
+    position: sticky; 
+    top: 0; 
+    z-index: 10; 
+    background: var(--table-header) !important; 
+    font-weight: 600 !important; 
+    letter-spacing: 0.5px !important; 
+    padding: 16px !important; 
+    border-bottom: 1px solid var(--border-color) !important; 
+    text-align: left; 
+    color: var(--text-muted); 
+    text-transform: uppercase; 
+    font-size: 12px; 
+    white-space: nowrap; 
+}
+
+/* FIX: Filter Header Row (Pushes it down so it doesn't overlap the top row) */
+.filter-row th {
+    top: 70px; /* Exactly the height of the row above it */
+    z-index: 9; 
+    padding: 8px 5px !important; /* Tighter padding so inputs fit nicely */
+}
+
+td { padding: 16px !important; border-bottom: 1px solid rgba(255, 255, 255, 0.03) !important; color: var(--text-main); vertical-align: middle; }
+tr:hover td { background: var(--table-hover) !important; transition: background 0.2s ease; }
+/* TABLE COLUMN WIDTH FIXES */
+th:nth-child(2) { min-width: 90px; }  
+th:nth-child(6) { min-width: 140px; }  
+
+/* 🚨 FIX: Force Details Column (Column 12) to stay small and use "..." for long text */
+#entriesTable th:nth-child(12), 
+#entriesTable td:nth-child(12) { 
+    max-width: 120px; 
+    white-space: nowrap; 
+    overflow: hidden; 
+    text-overflow: ellipsis; 
+}
+
+/* Ensure Action buttons at the end never squish or stack */
+th:last-child, td:last-child { min-width: 120px; white-space: nowrap; } 
+
+/* BUTTONS */
+.btn { padding: 10px 24px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; letter-spacing: 0.3px; transition: var(--smooth); display: inline-flex; align-items: center; gap: 6px; opacity: 1 !important; z-index: 51; }
+.btn-primary { background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%) !important; color: #fff; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3) !important; }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(14, 165, 233, 0.5) !important; }
+.btn-danger { background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%) !important; color: #fff; box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3) !important; }
+.btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(239, 68, 68, 0.5) !important; }
+.btn-ghost { background: transparent; border: 1px solid var(--border-color); color: var(--text-muted); }
+.btn-ghost:hover { background: rgba(255,255,255,0.1); color: #fff; border-color: rgba(255,255,255,0.2); }
+.btn-small { padding: 6px 12px; font-size: 12px; }
+
+/* VIEWS */
+.view-section { display: none; animation: fadeIn 0.4s ease-out; }
+.view-section.active { display: block; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+/* COLUMN FILTER */
+.filter-row th { padding: 5px !important; }
+.col-filter { width: 100%; padding: 6px; font-size: 11px; border: 1px solid var(--border-color); border-radius: 6px; background: rgba(0, 0, 0, 0.3); color: #fff; margin: 0; height: 28px; }
+.col-filter:focus { border-color: var(--accent); background: rgba(0, 0, 0, 0.5); }
+
+/* MODALS */
+.modal-overlay{ position: fixed; inset: 0; display: none; align-items: center; justify-content: center; background: rgba(9, 14, 23, 0.8); backdrop-filter: blur(8px); z-index: 20000; padding: 20px; }
+.modal{ width: 100%; max-width: 440px; background: rgba(30, 41, 59, 0.95); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: 0 24px 60px rgba(0,0,0,0.6); overflow: hidden; animation: slideUp 0.3s ease-out; }
+.modal-header{ display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; border-bottom: 1px solid var(--border-color); }
+.modal-body{ padding: 24px; }
+#manageEmpModal .modal{ max-width: 760px; }
+
+/* --- MOBILE RESPONSIVENESS --- */
+.close-sidebar-btn { display: none; cursor: pointer; color: var(--text-muted); font-size: 18px; }
+
+/* PREMIUM FLOATING MENU BUTTON (FAB) */
+.mobile-menu-btn {
+    display: none; /* Hidden by default on open desktop */
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 10000;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.7);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: var(--smooth);
+    align-items: center;
+    justify-content: center;
+}
+
+.mobile-menu-btn:hover {
+    background: rgba(30, 41, 59, 0.9);
+    color: var(--accent); /* Neon Blue */
+    transform: scale(1.08) translateY(-2px);
+    box-shadow: 0 12px 30px var(--accent-glow);
+    border-color: rgba(56, 189, 248, 0.3);
+}
+
+.mobile-menu-btn:active {
+    transform: scale(0.95);
+}
+
+/* MOBILE LAYOUT ADJUSTMENTS */
+@media (max-width: 900px) {
+    body { overflow-x: hidden; }
+    .sidebar { transform: translateX(-100%); left: auto; box-shadow: 5px 0 15px rgba(0,0,0,0.5); }
+    .sidebar.active { transform: translateX(0); }
+    .main-content, .app-main { margin-left: 0; width: 100%; padding: 20px; }
+    .close-sidebar-btn { display: block; }
+    
+    /* Show the FAB on Mobile */
+    .mobile-menu-btn { display: flex !important; }
+    
+    .form-grid { grid-template-columns: 1fr !important; gap: 15px; }
+    .chart-grid { grid-template-columns: 1fr; }
+    .login-card { width: 90%; padding: 30px; }
+    .table-responsive { overflow-x: auto; -webkit-overflow-scrolling: touch; max-width: 100vw; }
+    table { min-width: 100%; font-size: 11px; }
+    th, td { padding: 8px 6px !important; white-space: nowrap; }
+
+    .hide-on-desktop { display: block; }
+    .hide-on-mobile { display: none !important; }
+}
+
+/* --- DESKTOP SIDEBAR COLLAPSE --- */
+@media (min-width: 901px) {
+    /* When body has 'sidebar-closed', slide sidebar off-screen */
+    body.sidebar-closed .sidebar { 
+        transform: translateX(-100%); 
+    }
+    /* Expand the main content to full width */
+    body.sidebar-closed .main-content, 
+    body.sidebar-closed .app-main { 
+        margin-left: 0; 
+        width: 100%; 
+    }
+    /* Show the FAB so they can open the sidebar back up */
+    body.sidebar-closed .mobile-menu-btn { 
+        display: flex !important; 
+    }
+    
+    /* Arrow visibility controls */
+    .hide-on-desktop { display: none !important; }
+    .hide-on-mobile { display: block; cursor: pointer; color: var(--text-muted); font-size: 18px; transition: color 0.2s; }
+    .hide-on-mobile:hover { color: white; }
+}
+
+/* --- PREVENT FLOATING BUTTON FROM COVERING TEXT --- */
+/* On Mobile/Tablet */
+@media (max-width: 900px) {
+    .page-header {
+        padding-left: 65px !important; /* Pushes title right so button fits */
+    }
+}
+
+/* On Desktop (When Sidebar is Collapsed) */
+@media (min-width: 901px) {
+    body.sidebar-closed .page-header {
+        padding-left: 65px !important; /* Pushes title right so button fits */
+    }
+}
+
+/* --- GLOBAL LOADER STYLES --- */
+.loader-overlay {
+    position: fixed; inset: 0; 
+    background: rgba(9, 14, 23, 0.85);
+    backdrop-filter: blur(8px);
+    z-index: 999999; /* Ensures it is above absolutely everything */
+    display: flex; align-items: center; justify-content: center;
+}
+.spinner {
+    width: 60px; height: 60px; margin: 0 auto;
+    border: 6px solid rgba(56, 189, 248, 0.15); /* Faded accent color */
+    border-top-color: var(--accent); /* Bright accent color */
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.55, 0.15, 0.45, 0.85) infinite;
+}
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+/* =========================================
+   CUSTOM SCROLLBARS (Theme Aware)
+   ========================================= */
+:root {
+    --scroll-track: #090e17;
+    --scroll-thumb: rgba(255, 255, 255, 0.15);
+}
+[data-theme="light"] {
+    --scroll-track: #f8fafc;
+    --scroll-thumb: #cbd5e1;
+}
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: var(--scroll-track); }
+::-webkit-scrollbar-thumb { background: var(--scroll-thumb); border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* =========================================
+   PRINT-FRIENDLY MODE (Ctrl/Cmd + P)
+   ========================================= */
+@media print {
+    body, .main-content { 
+        background: #fff !important; 
+        color: #000 !important; 
+        margin: 0 !important; 
+        width: 100% !important; 
+        padding: 0 !important;
+    }
+    
+    /* Hide UI elements that shouldnt print */
+    .sidebar, .mobile-menu-btn, .btn, .page-header p, .loader-overlay { 
+        display: none !important; 
+    }
+    
+    /* Strip dark mode glass effects from tables and cards */
+    .content-card, .stat-card, table, th, td, .table-responsive {
+        background: #fff !important;
+        color: #000 !important;
+        border: 1px solid #ccc !important;
+        box-shadow: none !important;
+        backdrop-filter: none !important;
+        -webkit-backdrop-filter: none !important;
+    }
+    
+    th { color: #000 !important; background: #f8fafc !important; }
+    .page-title { color: #000 !important; -webkit-text-fill-color: #000 !important; }
+}
+/* =========================================
+   TOAST NOTIFICATIONS
+   ========================================= */
+#toast-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 999999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none; /* Lets users click through the gap */
+}
+
+.toast {
+    padding: 14px 24px;
+    border-radius: 10px;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    animation: toastSlideIn 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.toast.success { background: rgba(16, 185, 129, 0.9); border-left: 4px solid #059669; }
+.toast.error { background: rgba(239, 68, 68, 0.9); border-left: 4px solid #b91c1c; }
+.toast.warning { background: rgba(245, 158, 11, 0.9); border-left: 4px solid #d97706; }
+
+.toast.fade-out {
+    animation: toastFadeOut 0.4s ease forwards;
+}
+
+@keyframes toastSlideIn {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+@keyframes toastFadeOut {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+/* --- CRITICAL SIDEBAR FIX: PREVENT SQUISHING --- */
+
+/* 1. Allow the whole sidebar to scroll if the screen is too short */
+.sidebar { 
+    overflow-y: auto; 
+}
+
+/* 2. Tighten up the massive paddings in the bottom section */
+.sidebar-bottom { 
+    padding: 16px !important; /* Reduced from 24px */
+}
+
+.logout-btn { 
+    padding: 10px !important; /* Slightly thinner */
+    margin-top: 10px !important; 
+}
+
+.theme-switch-wrapper { 
+    padding: 8px 0 !important; 
+    margin-top: 10px !important; 
+}
+
+#adminControls { 
+    margin-top: 10px !important; 
+    padding-top: 10px !important; 
+}
+
+/* 3. Tighten the top logo area slightly to give more room */
+.brand {
+    margin-bottom: 15px !important;
+    padding-bottom: 15px !important;
+}
+/* --- CRITICAL MODAL FIX: MAKE TALL MODALS SCROLLABLE --- */
+#editTransModal .login-card {
+    max-height: 90vh; /* Never let it be taller than 90% of the screen */
+    overflow-y: auto; /* Turn on vertical scrolling! */
+    padding: 30px !important; /* Slightly reduce the padding to save space */
+}
+
+/* Make the scrollbar inside the modal look sleek */
+#editTransModal .login-card::-webkit-scrollbar { width: 6px; }
+#editTransModal .login-card::-webkit-scrollbar-track { background: transparent; }
+#editTransModal .login-card::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 10px; }
+#editTransModal .login-card::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+</style>
+
+
+</head>
+<body>
+<div id="globalLoader" class="loader-overlay" style="display: none;">
+    <div class="loader-content">
+        <div class="spinner"></div>
+        <h3 id="loaderText" style="color: #fff; margin-top: 15px; font-weight: 600; letter-spacing: 1px;">Importing Data, Please Wait...</h3>
+        <p style="color: var(--text-muted); font-size: 13px; margin-top: 5px;">Do not close this window</p>
+    </div>
+</div>
+<button class="mobile-menu-btn hide-on-desktop" onclick="toggleSidebar()" aria-label="Open Menu">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="4" y1="12" x2="20" y2="12"></line>
+        <line x1="4" y1="6" x2="20" y2="6"></line>
+        <line x1="4" y1="18" x2="20" y2="18"></line>
+    </svg>
+</button>
+
+<div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+  <div id="loginScreen" class="login-screen">
+  <div class="login-card">
+      <div style="text-align: center; margin-bottom: 35px;">
+          <img src="logo.png" alt="Logo" class="login-logo-img" onerror="this.style.display='none'; document.getElementById('fallbackLogo').style.display='block'">
+          <div id="fallbackLogo" style="font-size: 50px; margin-bottom: 15px; display:none;">📦</div>
+          
+          <h2 style="color:white; margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.5px;">Welcome Back</h2>
+          <p style="color:var(--text-muted); font-size:13px; margin-top:8px;">Sign in to your inventory dashboard</p>
+      </div>
+
+      <div style="margin-bottom: 15px;">
+          <label style="margin-left:5px;">Username</label>
+          <input type="text" id="loginUser" placeholder="Enter your username" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-main);">
+      </div>
+
+      <div style="margin-bottom: 25px;">
+           <label style="margin-left:5px;">Password</label>
+           <input type="password" id="loginPass" placeholder="Enter your password" style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-main);">
+      </div>
+
+      <button id="loginBtn" class="btn btn-primary" style="width:100%; padding: 14px; justify-content: center; font-size:14px; box-shadow: 0 4px 15px rgba(56, 189, 248, 0.3);">Access Account</button>
+      <p id="loginError" style="color:var(--danger); text-align:center; font-size:13px; display:none; margin-top:20px; background: rgba(239,68,68,0.1); padding: 10px; border-radius: 8px;">Invalid Username or Password</p>
+  </div>
+</div>
+
+
+  <div id="appShell" class="app-container">
+    
+   <nav class="sidebar" id="appSidebar">
+    
+    <div class="sidebar-top">
+        <div class="brand" style="display: flex; justify-content: space-between; align-items: center;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <img src="logo.png" alt="Logo" style="width:30px;" onerror="this.style.display='none'">
+                <span class="brand-text" style="line-height:1.2;">HARDWARE<br><span style="color:var(--text-muted); font-size:11px; font-weight:400;">Stock System</span></span>
+            </div>
+            <span class="close-sidebar-btn hide-on-desktop" onclick="toggleSidebar()" style="font-size: 18px;">✖</span>
+            <span class="hide-on-mobile" onclick="toggleSidebar()" title="Collapse Sidebar">◀</span>
+        </div>
+
+        <div style="padding: 10px 0; border-bottom: 1px solid var(--border-color);">
+            <label style="font-size: 10px; color: var(--text-muted); display: block; margin-bottom: 8px;">INVENTORY TYPE</label>
+            <select id="inventoryTypeSelector" onchange="switchInventoryType()" style="width: 100%; padding: 10px; font-size: 13px; font-weight: 600; background: rgba(15, 23, 42, 0.6); border: 1px solid var(--border-color); color: var(--accent); border-radius: 8px;">
+                <option value="hardware">🔧 Hardware</option>
+                <option value="consumable">📦 Consumable</option>
+                <option value="scrap">♻️ Scrap</option>
+            </select>
+        </div>
+    </div>
+
+    <div class="sidebar-middle">
+        <ul class="nav-menu">
+            <li class="nav-item active" onclick="openNormalTab('dashboard')"><span class="nav-icon">📊</span> <span>Dashboard</span></li>
+            <li class="nav-item" onclick="openNormalTab('transaction')"><span class="nav-icon">➕</span> <span>New Transaction</span></li>
+            <li class="nav-item" onclick="openNormalTab('stock')"><span class="nav-icon">📦</span> <span>Stock Overview</span></li>
+            <li class="nav-item" onclick="openHistoryTab()"><span class="nav-icon">🕒</span> <span>History Log</span></li>
+        </ul>
+    </div>
+
+    <div class="sidebar-bottom">
+        <div class="user-profile">
+            <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+                <div style="width:36px; height:36px; background:var(--accent); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; color:#fff;">U</div>
+                <div>
+                    <div style="font-size:13px; font-weight:600; color:#fff;" id="userDisplay">User</div>
+                    <div style="font-size:10px; color:var(--text-muted);" id="roleBadge">ROLE</div>
+                </div>
+            </div>
+            <button onclick="logout()" class="logout-btn" style="width:100%;"><span>⏻</span> LOGOUT</button>
+			<div class="theme-switch-wrapper">
+    <span id="themeLabel" style="font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">Light Mode</span>
+    
+    <label class="switch">
+        <input type="checkbox" id="themeToggle" onchange="toggleTheme()">
+        <span class="slider"></span>
+    </label>
+</div>
+        
+        <div id="adminControls" style="margin-top:15px; border-top:1px solid var(--border-color); padding-top:15px; display:none;">
+            <label style="font-size:9px;">Admin: Manage User</label>
+            <select id="adminUserFilter" class="form-control" style="font-size:11px; padding:6px; margin-bottom:10px; width:100%;" onchange="refreshUI()"></select>
+            <a id="adminLink" href="admin.php" class="btn btn-primary" style="display:block; text-align:center; font-size:10px; padding:8px; text-decoration:none;">Admin Panel</a>
+        </div>
+
+        <div style="margin-top:15px; font-size:10px; color:var(--text-muted); text-align:center; opacity:0.6;">
+            &copy; 2026 Amity-IT
+        </div>
+    </div>
+
+</nav>
+
+    <main class="main-content">
+        
+        <div id="view-dashboard" class="view-section active">
+    <div class="page-header" style="margin-bottom: 40px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 20px;">
+    <div>
+        <h1 class="page-title" style="font-size: 32px; margin: 0;">
+             Inventory Command Center
+        </h1>
+        <p style="color: var(--text-muted); margin-top: 8px; font-size: 14px; font-weight: 400;">
+            Real-time tracking of <span style="color: var(--accent); font-weight: 600;">Amity-IT</span> hardware assets
+        </p>
+    </div>
+    <div style="text-align: right;">
+        <span style="font-size: 11px; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 1px;">Live Status</span>
+       <span id="liveClock" style="font-size: 16px; font-weight: 600; color: var(--text-main); font-variant-numeric: tabular-nums;"></span>
+    </div>
+</div>
+
+<script>
+// Live Clock Update
+function updateClock() {
+    const now = new Date();
+    document.getElementById('liveClock').textContent = now.toLocaleString('en-IN', { 
+        weekday: 'short', 
+        day: '2-digit', 
+        month: 'short', 
+        hour: '2-digit', 
+        minute: '2-digit'
+    });
+}
+setInterval(updateClock, 1000);
+updateClock();
+</script>
+
+    
+    <div class="stats-grid">
+        <div class="stat-card" onclick="showView('stock')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div><div class="stat-lbl">Total Items</div><div class="stat-val" id="statTotalItems">0</div></div>
+            <div style="font-size:36px; opacity:0.8;">📦</div>
+        </div>
+
+        <div class="stat-card" onclick="showView('stock')" style="cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div><div class="stat-lbl">Total Units</div><div class="stat-val" id="statTotalStock">0</div></div>
+            <div style="font-size:36px; opacity:0.8; color:var(--success);">📈</div>
+        </div>
+
+        <div class="stat-card" onclick="filterLowStock()" style="border-color:rgba(239,68,68,0.3); cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+            <div><div class="stat-lbl" style="color:var(--danger);">Low Stock</div><div class="stat-val" id="statLowStock" style="color:var(--danger);">0</div></div>
+            <div style="font-size:36px; opacity:0.8; color:var(--danger);">⚠️</div>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <div class="chart-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <h3 style="margin:0; font-size:14px; color:var(--accent); text-transform:uppercase;">Stock Levels</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn btn-ghost btn-small" onclick="chartPagePrev()">◀</button>
+                    <span id="chartPageIndicator" style="font-size:10px; color:var(--text-muted); padding:4px;">1-15</span>
+                    <button class="btn btn-ghost btn-small" onclick="chartPageNext()">▶</button>
+                </div>
+            </div>
+            <div style="flex:1; position:relative;"><canvas id="mainChart"></canvas></div>
+        </div>
+        
+        <div class="chart-card">
+            <h3 style="margin:0 0 15px; font-size:14px; color:var(--warning); text-transform:uppercase;">Stock Health</h3>
+            <div style="position:relative; flex:1;"><canvas id="lowStockChart"></canvas></div>
+        </div>
+    </div>
+</div>
+
+
+
+        <div id="view-transaction" class="view-section">
+            <div class="page-header"><h1 class="page-title">New Transaction</h1></div>
+            <div id="transAdminMsg" class="admin-context-warning">⚠️ You are adding this transaction for user: <b id="transAdminTarget"></b></div>
+			<div style="display:flex; justify-content:flex-end; margin-bottom:10px;">
+			<div class="employee-controls" style="margin-top: 10px; display: flex; gap: 10px; align-items: center;">
+    <button type="button" class="btn" onclick="openAddEmpModal()">+ Add Employee</button>
+    
+    <button type="button" id="btnManageEmp" class="btn btn-ghost" onclick="openManageEmpModal()" style="display: none; border: 1px solid var(--border);">Manage List</button>
+</div>
+
+    <button onclick="document.getElementById('empFileInput').click()" class="btn btn-ghost btn-small">📂 Import Employee List</button>
+    <input type="file" id="empFileInput" accept=".xlsx,.xls" style="display:none;" onchange="handleEmpImport(this)">
+</div>
+            <div class="content-card">
+                <div class="form-grid">
+                    <div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;"><div><label>Date</label><input type="date" id="dateInput"></div><div><label>Form No.</label><input type="text" id="formNoInput" placeholder="F-101"></div></div>
+                       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px;">
+  <div>
+    <label>Search Employee</label>
+    <input list="empDataList" id="empIdInput" onchange="autoFillLocation()" onkeyup="autoFillLocation()" placeholder="Type name or ID..." autocomplete="off">
+    <datalist id="empDataList"></datalist>
+  </div>
+
+  <div>
+    <label>Location / Name</label>
+    <input type="text" id="fromToInput" placeholder="Auto filled..." readonly>
+  </div>
+</div>
+
+                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:15px; margin-bottom: 15px;">
+                            <div><label>Stock Entry</label><input type="text" id="stockEntryInput" placeholder="Leave blank for hand-fill"></div>
+                            <div><label>GRN No.</label><input type="text" id="grnInput" placeholder="Optional"></div>
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
+                            <div><label>Tag No.</label><input type="text" id="tagNoInput" placeholder="AUHPS0045"></div>
+                            <div><label>Serial No.</label><input type="text" id="serialNoInput" placeholder="Serial No."></div>
+                            <div><label>Purpose</label><input type="text" id="purposeInput" placeholder="For class"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <div style="display:grid; grid-template-columns: 2fr 1fr; gap:15px;"><div>
+    <label>Search Item</label>
+    <input list="itemDataList" id="itemSelect" onclick="this.value=''" placeholder="Type item name..." autocomplete="off">
+    <datalist id="itemDataList"></datalist>
+</div><div><label>Qty</label><input type="number" id="qtyInput" value="1" min="1"></div></div>
+                        <label>Description</label><input type="text" id="itemDetailsInput" placeholder="Details...">
+                        <label>Attachment</label><input type="file" id="imageUpload" accept="image/*,.pdf" style="padding:8px;">
+                        <div style="margin-top:25px; display:flex; gap:20px;"><button id="inBtn" class="btn btn-primary" style="flex:1;">IN (+)</button><button id="outBtn" class="btn btn-danger" style="flex:1;">OUT (-)</button></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-stock" class="view-section">
+            <div class="page-header">
+                <h1 class="page-title">Stock Overview</h1>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="bulkDeleteStock()" class="btn btn-danger admin-btn">🗑️ Bulk Delete</button>
+                    <button onclick="generateStockPDF()" class="btn btn-ghost">📄 Stock PDF</button>
+                    <button onclick="exportExcel()" class="btn btn-ghost">📊 Export Excel</button>
+                </div>
+            </div>
+            <div id="stockAdminMsg" class="admin-context-warning">⚠️ You are managing items for user: <b id="stockAdminTarget"></b></div>
+            <div class="content-card" style="display:flex; flex-wrap:wrap; gap:20px; align-items:flex-end;">
+                <div style="flex:1; min-width:250px;">
+                     <label>Add New Item</label>
+                     <div style="display:flex; gap:10px;"><input type="text" id="newItemName" placeholder="Item Name" style="margin:0;"><input type="text" id="newItemPage" placeholder="Page No." style="margin:0; width:90px;"><input type="number" id="newItemInitial" placeholder="Init Stock" style="margin:0; width:100px;"><button id="addItemBtn" class="btn btn-primary">Add</button></div>
+               <input type="text" id="stockSearch" placeholder="🔍 Search stock..." style="padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-body); color: var(--text-main); margin-right: 10px; width: 250px; margin-top: 15px;">
+			   </div>
+                <div id="adminExcelImport" style="flex:1; min-width:250px;"><label>Import Excel</label><input type="file" id="fileInput" accept=".xlsx,.xls" style="margin:0; padding:8px;"></div>
+            </div>
+            <div class="table-responsive">
+                <table id="stockTable">
+                    <thead><tr><th class="bulk-select-col"><input type="checkbox" onclick="toggleAll('stock-check', this)"></th><th>Item Name</th><th>Page No.</th><th>Initial Stock</th><th>Total In</th><th>Total Out</th><th>Current Stock</th><th>Actions</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div id="view-history" class="view-section">
+            <div class="page-header">
+                <h1 class="page-title">Transaction History</h1>
+                <div style="display:flex; gap:10px;">
+                    <button onclick="bulkDeleteEntries()" class="btn btn-danger admin-btn">🗑️ Bulk Delete</button>
+                    <button onclick="generateHistoryPDF()" class="btn btn-ghost">📄 PDF Report</button>
+					<button onclick="exportExcel()" class="btn btn-ghost">📊 Export Excel</button>
+                </div>
+            </div>
+            <div class="content-card" style="display:flex; gap:15px; align-items:center; flex-wrap:wrap;">
+                <div style="flex:1; min-width:140px;"><input type="date" id="filterStartDate" style="margin:0;"></div>
+                <div style="flex:1; min-width:140px;"><input type="date" id="filterEndDate" style="margin:0;"></div>
+                <div style="flex:2; min-width:200px;"><input type="text" id="searchInput" placeholder="Search..." style="margin:0;" oninput="filterEntries()"></div>
+                <button onclick="filterEntries()" class="btn btn-primary">Filter</button>
+                <button onclick="clearFilter()" class="btn btn-ghost">Reset</button>
+            </div>
+            <div class="table-responsive">
+                <table id="entriesTable">
+    <thead>
+        <tr>
+            <th class="bulk-select-col"><input type="checkbox" onclick="toggleAll('entry-check', this)"></th>
+            <th>Date</th>
+            <th>Form</th>
+            <th>Emp ID</th>
+            <th>Loc</th>
+            <th>Item</th>
+            <th>Type</th>
+            <th>Qty</th>
+            <th>Tag No.</th>
+            <th>Serial No.</th>
+            <th>Purpose</th>
+            <th>Details</th>
+            <th>Stock Entry</th>
+            <th>GRN</th>
+            <th>File</th>
+            <th>Act</th>
+        </tr>
+        <tr class="filter-row" style="background: rgba(15, 23, 42, 0.6);">
+            <th class="bulk-select-col"></th> 
+            <th><input type="text" class="col-filter" data-col="date" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="form_no" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="emp_id" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="from_to" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="item_name" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><select class="col-filter" data-col="in_out" onchange="filterByColumn()" style="padding:4px; height:auto; margin:0;"><option value="">All</option><option value="IN">IN</option><option value="OUT">OUT</option></select></th>
+            <th><input type="text" class="col-filter" data-col="qty" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="tag_no" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="serial_no" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="purpose" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="item_details" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="stock_entry" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th><input type="text" class="col-filter" data-col="grn_number" placeholder="Filter..." onkeyup="filterByColumn()"></th>
+            <th></th> <th></th> 
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+            </div>
+        </div>
+    </main>
+  </div>
+
+  <div id="editTransModal" class="login-screen" style="display:none; z-index:10000;">
+    <div class="login-card" style="max-width:600px; background: var(--modal-bg);">
+        <h3 style="color:var(--accent); margin-top:0;">Edit Transaction</h3>
+        <input type="hidden" id="editTransId">
+        
+        <div class="form-grid" style="gap:15px;">
+            <div><label>Date</label><input type="date" id="editDate" class="input-field"></div>
+            <div><label>Form No.</label><input type="text" id="editFormNo" class="input-field" placeholder="F-101"></div>
+        </div>
+		
+		<div class="form-grid" style="gap:15px; margin-top:10px;">
+            <div>
+                <label>Assign to Employee</label>
+                <input list="empDataList" id="editEmpId" class="input-field" onchange="autoFillEditLocation()" onkeyup="autoFillEditLocation()" placeholder="Type name or ID..." autocomplete="off">
+            </div>
+            <div>
+                <label>Location / Name</label>
+                <input type="text" id="editFromTo" class="input-field" readonly style="background: rgba(0,0,0,0.2); opacity: 0.7;">
+            </div>
+        </div>
+        
+        <div style="margin-top:10px;">
+            <label>Item Name</label>
+            <input list="itemDataList" id="editItemName" class="input-field" onclick="this.value=''" placeholder="Type item name..." autocomplete="off">
+        </div>
+        
+        <div class="form-grid" style="gap:15px; margin-top:10px;">
+            <div><label>Type</label><select id="editInOut" class="input-field"><option value="IN">IN</option><option value="OUT">OUT</option></select></div>
+            <div><label>Qty</label><input type="number" id="editQty" class="input-field"></div>
+        </div>
+        
+        <div style="margin-top:10px;"><label>Details</label><input type="text" id="editDetails" class="input-field"></div>
+        
+        <div class="form-grid" style="gap:15px; margin-top:10px;">
+            <div><label>Stock Entry</label><input type="text" id="editStockEntry" class="input-field"></div>
+            <div><label>GRN No.</label><input type="text" id="editGRN" class="input-field"></div>
+        </div>
+
+        <div class="form-grid" style="gap:15px; margin-top:10px;">
+            <div><label>Tag No.</label><input type="text" id="editTagNo" class="input-field"></div>
+            <div><label>Serial No.</label><input type="text" id="editSerialNo" class="input-field"></div>
+        </div>
+        
+        <div style="margin-top:10px;"><label>Purpose</label><input type="text" id="editPurpose" class="input-field"></div>
+
+        <div style="margin-top:15px; border-top:1px solid #334155; padding-top:10px;">
+            <label style="display:block; font-size:13px; color:#94a3b8; margin-bottom:5px;">Update Image (Optional):</label>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="file" id="editImageUpload" class="input-field" accept="image/*" onchange="previewFilename()" style="margin-bottom:0; flex:1;">
+                <button type="button" id="clearEditImageBtn" class="btn btn-ghost btn-small" onclick="clearEditImage()" style="display:none; color:var(--danger); border-color:rgba(239, 68, 68, 0.3); height: 42px;">Clear</button>
+            </div>
+            <input type="text" id="customImageName" class="input-field" placeholder="Rename image (e.g. invoice_123)" style="margin-top:10px; display:none;">
+        </div>
+        
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button onclick="document.getElementById('editTransModal').style.display='none'" class="btn btn-ghost">Cancel</button>
+            <button onclick="saveTransEdit()" class="btn btn-primary">Update</button>
+        </div>
+    </div>
+</div>
+
+  <div id="editStockModal" class="login-screen" style="display:none; z-index:10000;">
+    <div class="login-card" style="max-width:400px; background: var(--modal-bg);">
+        <h3 style="color:var(--accent); margin-top:0;">Edit Stock</h3>
+        <p id="editStockNameDisplay" style="color:var(--text-muted); margin-bottom:20px;"></p>
+        <input type="hidden" id="editStockName">
+        <label>Page No.</label><input type="text" id="editPageNo" style="margin-bottom: 15px;">
+        <label>Initial Stock</label><input type="number" id="editInitialStock">
+        <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+            <button onclick="document.getElementById('editStockModal').style.display='none'" class="btn btn-ghost">Cancel</button>
+            <button onclick="saveStockEdit()" class="btn btn-primary">Update</button>
+        </div>
+    </div>
+</div>
+<div id="addEmpModal" class="modal-overlay" style="display:none;">
+    <div class="modal">
+        <div class="modal-header">
+            <h3>Add New Employee</h3>
+            <button class="btn-ghost" onclick="document.getElementById('addEmpModal').style.display='none'">✕</button>
+        </div>
+        <div class="modal-body">
+            <div class="form-group">
+                <label>Employee ID</label>
+                <input type="text" id="newEmpId" placeholder="E.g. 1001">
+            </div>
+            <div class="form-group">
+                <label>Location / Name</label>
+                <input type="text" id="newEmpLoc" placeholder="E.g. Warehouse A">
+            </div>
+            <button class="btn" onclick="saveNewEmployee()" style="width: 100%; margin-top: 15px;">Save Employee</button>
+        </div>
+    </div>
+</div>
+
+<div id="manageEmpModal" class="modal-overlay" style="display:none;">
+    <div class="modal" style="max-width: 600px;">
+        <div class="modal-header">
+            <h3>Manage Employees</h3>
+            <button class="btn-ghost" onclick="document.getElementById('manageEmpModal').style.display='none'">✕</button>
+        </div>
+        <div class="modal-body">
+            <div style="max-height: 400px; overflow-y: auto;">
+                <table class="data-table" id="manageEmpTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Location</th>
+                            <th style="width: 80px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+  <script>
+const BASE_URL = "./";
+let transactions = [], filteredTransactions = [], globalItems = [], mainChart = null, lowStockChart = null;
+let chartPageIndex = 0; const CHART_ITEMS_PER_PAGE = 15;
+let employeeList = []; 
+let activeInventoryType = sessionStorage.getItem('inventoryType') || 'hardware';
+
+// Universal Toast Notification System
+function showToast(message, type = 'success') {
+    // 1. Create container if it doesn't exist
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    // 2. Create the toast element
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    
+    // Add an icon based on type
+    let icon = type === 'success' ? '✅ ' : type === 'error' ? '❌ ' : '⚠️ ';
+    toast.innerText = icon + message;
+
+    // 3. Add it to the screen
+    container.appendChild(toast);
+
+    // 4. Remove it after 3 seconds smoothly
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400); // Wait for fade animation to finish
+    }, 3000);
+}
+
+// --- LOADER CONTROLS ---
+function showLoader(message = "Processing, Please Wait...") {
+    document.getElementById('loaderText').textContent = message;
+    document.getElementById('globalLoader').style.display = 'flex';
+}
+
+function hideLoader() {
+    document.getElementById('globalLoader').style.display = 'none';
+}
+
+// --- 1. NAVIGATION & HISTORY ---
+function showView(v, updateHistory = true) { 
+    document.querySelectorAll('.view-section').forEach(e => e.classList.remove('active')); 
+    document.getElementById('view-'+v).classList.add('active'); 
+    document.querySelectorAll('.nav-item').forEach(e => e.classList.remove('active')); 
+    
+    const i = document.querySelectorAll('.nav-item'); 
+    if(v === 'dashboard') i[0].classList.add('active');
+    if(v === 'transaction') i[1].classList.add('active');
+    if(v === 'stock') { i[2].classList.add('active'); renderStockTable(); }
+    if(v === 'history') i[3].classList.add('active');
+
+    if (window.innerWidth <= 768) {
+        document.querySelector('.sidebar').classList.remove('active');
+        document.getElementById('sidebarOverlay').classList.remove('active');
+        document.body.style.overflow = ''; 
+    }
+
+    if(updateHistory) history.pushState({view: v}, null, "#" + v);
+}
+
+window.addEventListener('popstate', function(event) {
+    if (event.state && event.state.view) {
+        showView(event.state.view, false);
+    } else {
+        showView('dashboard', false);
+        history.replaceState({view: 'dashboard'}, null, "#dashboard");
+    }
+});
+
+function toggleSidebar() {
+    const sb = document.querySelector('.sidebar');
+    const ov = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('active');
+    ov.classList.toggle('active');
+    document.body.style.overflow = sb.classList.contains('active') ? 'hidden' : '';
+}
+
+// --- 2. AUTHENTICATION ---
+function logout() { sessionStorage.clear(); location.reload(); }
+
+function getTargetUserId() {
+    const role = sessionStorage.getItem("userRole");
+    const adminFilter = document.getElementById("adminUserFilter");
+    
+    // 🚨 FIX: Force it to return an empty string when "View All" is selected
+    if (role === 'admin' && adminFilter) {
+        if (adminFilter.value === "") return ""; 
+        return adminFilter.value; 
+    }
+    return sessionStorage.getItem("userId");
+}
+
+// --- 3. CHARTS ---
+function chartPageNext() { if(chartPageIndex < Math.ceil(globalItems.length/CHART_ITEMS_PER_PAGE)-1) { chartPageIndex++; updateCharts(); } }
+function chartPagePrev() { if(chartPageIndex > 0) { chartPageIndex--; updateCharts(); } }
+
+function updateCharts() {
+    const ctx1 = document.getElementById('mainChart'); 
+    const sortedItems = [...globalItems].sort((a,b) => parseInt(b.current_stock) - parseInt(a.current_stock));
+    const pageItems = sortedItems.slice(chartPageIndex * CHART_ITEMS_PER_PAGE, (chartPageIndex+1) * CHART_ITEMS_PER_PAGE);
+    document.getElementById("chartPageIndicator").textContent = `${chartPageIndex * CHART_ITEMS_PER_PAGE + 1}-${Math.min((chartPageIndex+1)*CHART_ITEMS_PER_PAGE, sortedItems.length)} of ${sortedItems.length}`;
+    
+    if(mainChart) mainChart.destroy();
+    mainChart = new Chart(ctx1, { 
+        type: 'bar', 
+        data: { labels: pageItems.map(i => i.item_name), datasets: [{ label: 'Stock Level', data: pageItems.map(i => i.current_stock), backgroundColor: '#38bdf8', borderRadius: 4 }] }, 
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {display:false} }, scales: { x: { ticks: {color:'#94a3b8'}, grid: {display:false} }, y: { ticks: {color:'#94a3b8'}, grid: {color:'rgba(255,255,255,0.05)'}, beginAtZero: true } } } 
+    });
+    
+    // 👇 THE FIX IS APPLIED HERE:
+    const threshold = parseInt(localStorage.getItem('low_stock_threshold')) || 2;
+    const lowItems = globalItems.filter(i => parseInt(i.current_stock) <= threshold).length; 
+    
+    const ctx2 = document.getElementById('lowStockChart');
+    if(lowStockChart) lowStockChart.destroy(); 
+    lowStockChart = new Chart(ctx2, { 
+        type: 'doughnut', 
+        data: { labels: ['Healthy', 'Low Stock'], datasets: [{ data: [globalItems.length - lowItems, lowItems], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }] }, 
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: {position:'bottom', labels:{color:'#94a3b8'}} } } 
+    });
+}
+// Switch Inventory Type
+// Switch Inventory Type
+function switchInventoryType() {
+    const selector = document.getElementById('inventoryTypeSelector');
+    activeInventoryType = selector.value;
+    sessionStorage.setItem('inventoryType', activeInventoryType);
+    
+    // Update page title dynamically
+    const labels = {
+        'hardware': 'Hardware Assets',
+        'consumable': 'Consumable Items',
+        'scrap': 'Scrap Items'
+    };
+    
+    const pLabel = document.querySelector('.page-header p');
+    if (pLabel) {
+        pLabel.innerHTML = `Real-time tracking of <span style="color: var(--accent); font-weight: 600">Amity-IT</span> ${labels[activeInventoryType].toLowerCase()}`;
+    }
+    
+    // 🚨 FIX: WIPE THE NEW TRANSACTION FORM CLEAN ON TAB/TYPE SWITCH!
+    const fieldsToClear = [
+        'tagNoInput', 'serialNoInput', 'itemSelect', 'itemDetailsInput', 
+        'empIdInput', 'fromToInput', 'purposeInput', 'stockEntryInput', 'grnInput'
+    ];
+    
+    fieldsToClear.forEach(id => {
+        const element = document.getElementById(id);
+        if (element) {
+            element.value = '';
+        }
+    });
+    
+    const qtyField = document.getElementById('qtyInput');
+    if (qtyField) {
+        qtyField.value = '1'; // Reset quantity back to default 1
+    }
+
+    // Clear history filters and refresh UI tables completely
+    const searchInput = document.getElementById('searchInput');
+    if (searchInput) searchInput.value = '';
+    
+    const startDate = document.getElementById('filterStartDate');
+    if (startDate) startDate.value = '';
+    
+    const endDate = document.getElementById('filterEndDate');
+    if (endDate) endDate.value = '';
+    
+    document.querySelectorAll('.col-filter').forEach(f => f.value = '');
+    
+    refreshUI();
+}
+
+// On page load, restore selection
+window.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('inventoryTypeSelector').value = activeInventoryType;
+});
+
+
+// --- 4. DATA FETCHING ---
+function refreshUI() {
+    const targetId = getTargetUserId();
+    const currentRole = sessionStorage.getItem('userRole');
+    
+    if(currentRole === 'admin' && targetId !== "" && targetId != sessionStorage.getItem('userId')) {
+        const userName = document.getElementById('adminUserFilter').options[document.getElementById('adminUserFilter').selectedIndex].text;
+        document.getElementById('transAdminMsg').style.display = 'flex';
+        document.getElementById('transAdminTarget').textContent = userName;
+        document.getElementById('stockAdminMsg').style.display = 'flex';
+        document.getElementById('stockAdminTarget').textContent = userName;
+    } else {
+        document.getElementById('transAdminMsg').style.display = 'none';
+        document.getElementById('stockAdminMsg').style.display = 'none';
+    }
+    
+   // Fetch Stock
+    fetch(`${BASE_URL}api_stock.php?user_id=${targetId}&type=${activeInventoryType}`)
+        .then(r => r.json())
+        .then(async d => {  
+            if(d.success) {
+                let stockData = d.data;
+                // Protect the array from emptying when viewing all
+                if(currentRole != 'admin') {
+                    stockData = stockData.filter(i => i.user_id == sessionStorage.getItem('userId'));
+                } else if(targetId !== "" && targetId != sessionStorage.getItem('userId')) {
+                    stockData = stockData.filter(i => i.user_id == targetId);
+                }
+                
+                globalItems = stockData;
+                
+                // 🚨 THE FIX: Crash-proof the Admin Settings check! 🚨
+                let trueLimit = 5; // Default fallback
+                try {
+                    const settingsRes = await fetch(`${BASE_URL}api_admin.php?action=get_settings`).then(r => r.json());
+                    // Only update the limit if the server actually gave us success data!
+                    if (settingsRes && settingsRes.success && settingsRes.data) {
+                        trueLimit = parseInt(settingsRes.data.low_stock_threshold) || 2;
+                    }
+                } catch (e) {
+                    // If it fails (like when a Normal User gets Access Denied), quietly ignore it and use 5!
+                    console.log("Using default stock threshold.");
+                }
+                
+                localStorage.setItem('low_stock_threshold', trueLimit);
+
+                renderStockTable();
+
+                document.getElementById('statTotalItems').textContent = globalItems.length;
+                document.getElementById('statTotalStock').textContent = globalItems.reduce((acc,i) => acc + parseInt(i.current_stock), 0);
+                const lowItems = globalItems.filter(i => parseInt(i.current_stock) <= trueLimit);
+                document.getElementById('statLowStock').textContent = lowItems.length;
+                document.getElementById('statLowStock').style.color = lowItems.length > 0 ? '#ef4444' : 'inherit';
+
+                populateItemSelects();
+                updateCharts();
+            }
+        });
+    
+    // Fetch History
+    fetch(`${BASE_URL}api_transactions.php?user_id=${targetId}&type=${activeInventoryType}`)
+        .then(r => r.json())
+        .then(d => {
+            if(d.success) {
+                let transData = d.data;
+                if(currentRole != 'admin') {
+                    transData = transData.filter(t => t.user_id == sessionStorage.getItem('userId'));
+                } else if(targetId !== "" && targetId != sessionStorage.getItem('userId')) {
+                    transData = transData.filter(t => t.user_id == targetId);
+                }
+                transactions = transData;
+                runMasterFilter();
+                loadEmployeesFromServer();
+            }
+        });
+}
+// --- 5. TABLES & FILTERS ---
+function renderStockTable() {
+    const tbody = document.querySelector("#stockTable tbody"); 
+    tbody.innerHTML = ""; 
+    const role = sessionStorage.getItem("userRole");
+    const threshold = parseInt(localStorage.getItem('low_stock_threshold')) || 2;
+    
+    globalItems.forEach(i => {
+        const tr = document.createElement("tr");
+        const safeName = i.item_name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        
+        let acts = `<button class="btn btn-ghost btn-small" onclick="openStockEdit('${safeName}', ${i.initial_stock || 0}, '${i.page_no || ''}', ${i.user_id})">Edit</button>`;
+        if(role === 'admin') acts += ` <button class="btn btn-ghost btn-small" style="color:var(--danger);" onclick="deleteItem('${safeName}', ${i.user_id})">Del</button>`;
+        
+        const stockValue = parseInt(i.current_stock);
+        let color = stockValue <= threshold ? "var(--danger)" : "var(--text-main)";
+        if (stockValue <= threshold) { tr.style.backgroundColor = "rgba(239, 68, 68, 0.08)"; }
+        
+        tr.innerHTML = `
+            <td class="bulk-select-col"><input type="checkbox" class="stock-check" value="${i.item_name}"></td>
+            <td style="font-weight:600;">${i.item_name}</td>
+            <td>${i.page_no || "-"}</td>
+            <td>${i.initial_stock || 0}</td>
+            <td>${i.in_qty}</td>
+            <td>${i.out_qty}</td>
+            <td style="color:${color}; font-weight:bold;">${i.current_stock}${stockValue <= threshold ? ' <small>⚠️</small>' : ''}</td>
+            <td>${acts}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function renderHistoryTable(data) {
+    const tbody = document.querySelector("#entriesTable tbody"); 
+    tbody.innerHTML = ""; 
+    
+    // --- PREMIUM EMPTY STATE ---
+    if (data.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="100%" style="text-align: center; padding: 60px 20px; border-bottom: none !important;">
+            <div style="font-size: 48px; margin-bottom: 15px; opacity: 0.8;">📭</div>
+            <h3 style="color: var(--text-main); margin: 0 0 8px 0; font-size: 18px;">No records found</h3>
+            <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Try adjusting your filters or search terms.</p>
+        </td></tr>`;
+        return;
+    }
+
+    const role = sessionStorage.getItem("userRole");
+    
+    data.forEach((t, index) => {
+        const tr = document.createElement("tr");
+        let img = t.image_file ? `<a href="uploads/${t.image_file}" target="_blank" style="color:var(--accent);">View</a>` : "-";
+        let acts = `<button class="btn btn-ghost btn-small" onclick="printSmartSlip(${t.id})">📄 Slip</button> `;
+        acts += `<button class="btn btn-ghost btn-small" onclick="openTransEdit(${t.id})">Edit</button>`;
+        if(role === 'admin') acts += ` <button class="btn btn-ghost btn-small" style="color:var(--danger);" onclick="deleteTransaction(${t.id})">Del</button>`;
+        
+        tr.innerHTML = `<td class="bulk-select-col"><input type="checkbox" class="entry-check" value="${t.id}"></td>
+                        <td>${t.date}</td><td>${t.form_no||"-"}</td><td>${t.emp_id||"-"}</td><td>${t.from_to||"-"}</td>
+                        <td style="font-weight:600;">${t.item_name}</td>
+                        <td><span style="background:${t.in_out=='IN'?'rgba(16, 185, 129, 0.15)':'rgba(239, 68, 68, 0.15)'}; color:${t.in_out=='IN'?'var(--success)':'var(--danger)'}; padding: 4px 10px; border-radius: 20px; font-weight: 700; font-size: 11px; letter-spacing: 0.5px; border: 1px solid ${t.in_out=='IN'?'rgba(16, 185, 129, 0.3)':'rgba(239, 68, 68, 0.3)'};">${t.in_out}</span></td>
+                        <td>${t.qty}</td>
+                        <td style="font-size:11px; font-weight:bold; color:var(--accent);">${t.tag_no||"-"}</td>
+                        <td style="font-size:11px;">${t.serial_no||"-"}</td>
+                        <td style="font-size:11px;">${t.purpose||"-"}</td>
+                        <td style="font-size:11px; color:var(--text-muted);" title="${t.item_details}">${t.item_details}</td>
+                        <td style="font-size:11px;">${t.stock_entry || "-"}</td><td style="font-size:11px;">${t.grn_number||"-"}</td>
+                        <td>${img}</td><td>${acts}</td>`;
+        
+        // --- STAGGERED ROW ANIMATION ---
+        tr.style.opacity = "0";
+        tr.style.animation = `slideInRow 0.3s ease-out forwards ${index * 0.03}s`;
+        
+        tbody.appendChild(tr);
+    });
+}
+
+function runMasterFilter() {
+    const globalSearch = document.getElementById("searchInput").value.toLowerCase();
+    const startDate = document.getElementById("filterStartDate").value;
+    const endDate = document.getElementById("filterEndDate").value;
+    
+    const colFilters = {};
+    document.querySelectorAll('.col-filter').forEach(input => {
+        const val = input.value.toLowerCase().trim();
+        const key = input.getAttribute('data-col');
+        if(val) colFilters[key] = val;
+    });
+
+    filteredTransactions = transactions.filter(t => {
+        if (startDate && t.date < startDate) return false;
+        if (endDate && t.date > endDate) return false;
+        
+        if (globalSearch) {
+            const rowStr = [t.item_name, t.form_no, t.emp_id, t.from_to, t.stock_entry, t.grn_number, t.tag_no, t.serial_no, t.purpose, t.item_details, t.in_out].map(v => (v || "").toString().toLowerCase()).join(" ");
+            if (!rowStr.includes(globalSearch)) return false;
+        }
+
+        for (const [key, searchVal] of Object.entries(colFilters)) {
+            let dataVal = (t[key] || "").toString().toLowerCase();
+            if (!dataVal.includes(searchVal)) return false;
+        }
+        return true;
+    });
+    renderHistoryTable(filteredTransactions);
+}
+
+// --- 6. EMPLOYEE IMPORT ---
+function handleEmpImport(input) {
+    const file = input.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = e.target.result;
+            const workbook = XLSX.read(data, { type: "binary" });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+            let promises = [];
+
+            jsonData.forEach(row => {
+                let rawId = row["Emp ID"] || row["EMPID"] || row["id"] || row["ID"];
+                let rawLoc = row["Location"] || row["LOCATION"] || row["Name"] || row["NAME"];
+                
+                if(rawId && rawLoc) {
+                    const empData = {
+                        emp_id: String(rawId).trim(),
+                        location_name: String(rawLoc).trim(),
+                        user_id: getTargetUserId()
+                    };
+                    promises.push(fetch(BASE_URL + "api_employees.php", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(empData)
+                    }));
+                }
+            });
+
+            Promise.all(promises).then(() => {
+                alert(`Success! Imported and saved to database.`);
+                loadEmployeesFromServer(); 
+            });
+        } catch (error) {
+            alert("Error: " + error.message);
+        }
+        input.value = ""; 
+    };
+    reader.readAsBinaryString(file);
+}
+
+function populateEmployeeSelect() {
+    const dl = document.getElementById("empDataList");
+    if (!dl) return;
+    
+    let optionsHTML = '';
+    employeeList.sort((a,b) => String(a.id).localeCompare(String(b.id)));
+    
+    // This feeds both the ID and the Name into the search pool
+    employeeList.forEach(emp => {
+        optionsHTML += `<option value="${emp.id} - ${emp.location}">`;
+    });
+
+    dl.innerHTML = optionsHTML;
+}
+
+function autoFillLocation() {
+    const inputVal = document.getElementById("empIdInput").value;
+    const extractedId = inputVal.split(' - ')[0].trim(); // Grabs just the ID part
+    const employee = employeeList.find(e => e.id === extractedId);
+    document.getElementById("fromToInput").value = employee ? employee.location : "";
+}
+
+function autoFillEditLocation() {
+    const inputVal = document.getElementById("editEmpId").value;
+    const extractedId = inputVal.split(' - ')[0].trim(); // Grabs just the ID part
+    const employee = employeeList.find(e => e.id === extractedId);
+    document.getElementById("editFromTo").value = employee ? employee.location : "";
+}
+
+// --- 7. ACTIONS (Add, Edit, Delete, Export) ---
+function addTransaction(type) {
+    // 1. Prevent Double-Clicks
+    const btn = type === 'IN' ? document.getElementById("inBtn") : document.getElementById("outBtn");
+    const originalText = btn.innerText;
+    btn.disabled = true;
+    btn.innerText = "Saving...";
+
+    const t = getTargetUserId();
+    // 🚨 THE FIX: Block transactions if Admin is on "View All"
+    if (sessionStorage.getItem("userRole") === 'admin' && t === "") {
+        showToast("⚠️ Select a specific User to add a transaction.", "warning");
+        btn.disabled = false; btn.innerText = originalText;
+        return;
+    }
+    
+    // 🚨 VALIDATION: Make sure the Item and Employee actually exist!
+    const typedEmpId = document.getElementById('empIdInput').value.split(' - ')[0].trim();
+    const typedItemRaw = document.getElementById('itemSelect').value.trim();
+
+    if (typedItemRaw === "") {
+        showToast("⚠️ Please type or select an Item Name.", "warning");
+        btn.disabled = false; btn.innerText = originalText;
+        return;
+    }
+
+    // 🧠 SMART MATCH: Find the item, ignoring uppercase/lowercase and extra spaces
+    const matchedItem = globalItems.find(i => i.item_name.trim().toLowerCase() === typedItemRaw.toLowerCase());
+    
+    // 🧠 SMART MATCH: Find the employee, ignoring uppercase/lowercase and extra spaces
+    let matchedEmp = employeeList.find(e => e.id.trim().toLowerCase() === typedEmpId.toLowerCase());
+
+    // 🚀 THE NEW AUTO-SYNC LOGIC 🚀
+    if (typedEmpId !== "" && !matchedEmp) {
+        const typedLocation = document.getElementById('fromToInput').value.trim();
+        
+        if (typedLocation === "") {
+            showToast("⚠️ Please provide a Location/Name for this new employee.", "warning");
+            btn.disabled = false; btn.innerText = originalText;
+            return;
+        }
+
+        // 1. Silently save the new employee to your local database!
+        const targetUserId = getTargetUserId() || sessionStorage.getItem("userId");
+        fetch(BASE_URL + "api_employees.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ 
+                emp_id: typedEmpId, 
+                location_name: typedLocation, 
+                user_id: targetUserId 
+            })
+        });
+
+        // 2. Add them to your local memory instantly so the transaction can proceed!
+        matchedEmp = { id: typedEmpId, location: typedLocation };
+        employeeList.push(matchedEmp);
+        
+        showToast("👤 New Employee Auto-Synced to Database!", "success");
+    }
+
+    if (!matchedItem) {
+        // Now it will tell you exactly what word it is failing on!
+        showToast(`⚠️ Item "${typedItemRaw}" not found in your local stock list.`, "warning");
+        btn.disabled = false; btn.innerText = originalText;
+        return;
+    }
+    
+    // Force the system to use the perfectly formatted name from your database
+    const finalItemName = matchedItem.item_name;
+    const finalEmpId = matchedEmp ? matchedEmp.id : "";
+
+    const p = {
+        date: document.getElementById('dateInput').value || new Date().toISOString().slice(0,10),
+        form_no: document.getElementById('formNoInput').value,
+        item_name: finalItemName, // 🚨 FIXED: Now it uses the perfectly matched name!
+        in_out: type,
+        qty: document.getElementById('qtyInput').value,
+        emp_id: finalEmpId, // 🚨 FIXED: Now it uses the perfectly matched employee ID!
+        from_to: document.getElementById('fromToInput').value,
+        item_details: document.getElementById('itemDetailsInput').value,
+        stock_entry: document.getElementById('stockEntryInput').value,
+        grn_number: document.getElementById('grnInput').value,
+        tag_no: document.getElementById('tagNoInput').value, 
+        serial_no: document.getElementById('serialNoInput').value, 
+        purpose: document.getElementById('purposeInput').value, 
+        user_id: t,
+        inventory_type: activeInventoryType
+    }; 
+    
+    if(!p.item_name || p.qty <= 0){
+        showToast("Invalid Item or Quantity", "warning");
+        btn.disabled = false; btn.innerText = originalText;
+        return;
+    } 
+    
+    const f = document.getElementById("imageUpload"); 
+    const save = (fname) => { 
+        p.image_file = fname; 
+        fetch(BASE_URL+"api_transactions.php",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(p)})
+        .then(r=>r.json()).then(d=>{
+            if(d.success){ 
+                showToast("Transaction Saved!", "success"); 
+                refreshUI(); 
+                document.getElementById('imageUpload').value = ''; 
+                document.getElementById('qtyInput').value = '1';
+                document.getElementById('itemDetailsInput').value = '';
+                document.getElementById('stockEntryInput').value = '';
+                document.getElementById('grnInput').value = '';
+                document.getElementById('tagNoInput').value = ''; // Clear Tag No
+                document.getElementById('serialNoInput').value = ''; // Clear Serial No
+                document.getElementById('purposeInput').value = ''; // Clear Purpose
+            } else {
+                showToast(d.message, "error"); 
+            }
+            btn.disabled = false; btn.innerText = originalText;
+        }).catch(() => { btn.disabled = false; btn.innerText = originalText; }); 
+    }; 
+    
+    if(f.files.length>0){
+        let fd=new FormData(); fd.append("image",f.files[0]);
+        fetch(BASE_URL+"upload.php",{method:"POST",body:fd}).then(r=>r.json()).then(d=> {
+            if(d.success) save(d.filename);
+            else { showToast("Upload Failed", "error"); btn.disabled = false; btn.innerText = originalText; }
+        });
+    } else save(""); 
+}
+
+function addNewItem() {
+    const btn = document.getElementById('addItemBtn');
+    btn.disabled = true; btn.innerText = "..."; // Prevent double click
+
+    const t = getTargetUserId();
+	// 🚨 THE FIX: Block manual additions if Admin is on "View All"
+    if (sessionStorage.getItem("userRole") === 'admin' && t === "") {
+        showToast("⚠️ Select a specific User to add a new item.", "warning");
+        btn.disabled = false; btn.innerText = "Add";
+        return;
+    }
+    const n = document.getElementById('newItemName').value;
+    const p = document.getElementById('newItemPage').value;
+    const i = document.getElementById('newItemInitial').value;
+    
+    if(!n) { 
+        showToast("Please enter an item name", "warning"); 
+        btn.disabled = false; btn.innerText = "Add";
+        return; 
+    }
+    
+    fetch(`${BASE_URL}api_items.php`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ name: n, page_no: p, initial_stock: i, user_id: t, inventory_type: activeInventoryType })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success) {
+            document.getElementById('newItemName').value = '';
+            document.getElementById('newItemPage').value = '';
+            document.getElementById('newItemInitial').value = '';
+            showToast("Item added successfully!", "success"); // ✅ TOAST
+            refreshUI();
+        } else {
+            showToast(d.message, "error"); // ❌ TOAST
+        }
+        btn.disabled = false; btn.innerText = "Add";
+    }).catch(() => { btn.disabled = false; btn.innerText = "Add"; });
+}
+
+function populateItemSelects() { 
+    const s = document.getElementById("itemDataList"); // Targets the new Datalist
+    const es = document.getElementById("editItemName"); 
+    s.innerHTML = ""; es.innerHTML = ""; 
+    
+    globalItems.forEach(i => { 
+        // Feeds the new searchable box
+        let o = document.createElement("option"); 
+        o.value = i.item_name; 
+        s.appendChild(o); 
+        
+        // Feeds the Edit Modal
+        let o2 = document.createElement("option"); 
+        o2.value = i.item_name; 
+        o2.textContent = i.item_name; 
+        es.appendChild(o2); 
+    }); 
+}
+function toggleAll(className, source) { document.querySelectorAll('.' + className).forEach(cb => cb.checked = source.checked); }
+//function bulkDeleteStock() { if(sessionStorage.getItem("userRole") !== 'admin') return; const s = Array.from(document.querySelectorAll('.stock-check:checked')).map(cb => cb.value); if(s.length>0 && confirm("Delete selected items?")) Promise.all(s.map(n => fetch(BASE_URL+"api_items.php", {method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({name: n, inventory_type: activeInventoryType})}))).then(() => { showToast("Items Deleted", "success"); refreshUI(); }); }
+
+function bulkDeleteEntries() { if(sessionStorage.getItem("userRole") !== 'admin') return; const s = Array.from(document.querySelectorAll('.entry-check:checked')).map(cb => cb.value); if(s.length>0 && confirm("Delete selected transactions?")) Promise.all(s.map(id => fetch(BASE_URL+"api_transactions.php", {method:"DELETE", headers:{"Content-Type":"application/json"}, body:JSON.stringify({id: id})}))).then(() => { showToast("Transactions Deleted", "success"); refreshUI(); }); }
+
+function openTransEdit(id){ 
+    const t=transactions.find(x=>x.id==id);
+    if(!t) return; 
+    
+    document.getElementById("editTransId").value = t.id;
+    document.getElementById("editDate").value = t.date;
+    document.getElementById("editFormNo").value = t.form_no || ""; // ✅ FIX: Fills in Form No.
+    const empMatch = employeeList.find(e => e.id === t.emp_id);
+    document.getElementById("editEmpId").value = empMatch ? `${empMatch.id} - ${empMatch.location}` : (t.emp_id || "");
+	document.getElementById("editFromTo").value = t.from_to || "";
+	
+    document.getElementById("editItemName").value = t.item_name;
+    
+    document.getElementById("editInOut").value = t.in_out;
+    document.getElementById("editQty").value = t.qty;
+    document.getElementById("editDetails").value = t.item_details;
+    document.getElementById("editStockEntry").value = t.stock_entry || "";
+    document.getElementById("editGRN").value = t.grn_number || "";
+    document.getElementById("editTagNo").value = t.tag_no || "";
+    document.getElementById("editSerialNo").value = t.serial_no || "";
+    document.getElementById("editPurpose").value = t.purpose || "";
+    
+    document.getElementById("editTransModal").style.display = "flex"; 
+}
+
+function saveTransEdit() {
+    console.log("Starting Update...");
+    const idField = document.getElementById("editTransId");
+    
+    // ✅ Swapped alert for showToast
+    if (!idField || !idField.value) { showToast("Error: ID missing!", "error"); return; }
+    
+    const id = idField.value;
+    const fileInput = document.getElementById("editImageUpload");
+    
+	// 🚨 VALIDATION: Protect the Edit Modal from fake data
+    const typedEmpId = document.getElementById("editEmpId").value.split(' - ')[0].trim();
+    const typedItem = document.getElementById("editItemName").value;
+    const originalTx = transactions.find(x => x.id == id);
+
+    // Allow the save if it's a valid employee OR if it matches the original legacy employee!
+    if (typedEmpId !== "" && !employeeList.some(e => e.id === typedEmpId) && (!originalTx || originalTx.emp_id !== typedEmpId)) {
+        showToast("⚠️ Please select a valid Employee from the list.", "error");
+        return;
+    }
+    
+    // Check if the item exists in stock, OR if it matches the original item (in case it was archived/deleted from stock)
+    const itemExists = globalItems.some(i => i.item_name === typedItem);
+    if (!itemExists && (!originalTx || originalTx.item_name !== typedItem)) {
+        showToast("⚠️ Please select a valid Item from the list.", "error");
+        return;
+    }
+	
+    const payload = {
+        id: id,
+        date: document.getElementById("editDate").value,
+        form_no: document.getElementById("editFormNo").value, // ✅ FIX: Grabs the Form No.
+		emp_id: document.getElementById("editEmpId").value.split(' - ')[0].trim(),
+		from_to: document.getElementById("editFromTo").value,
+        item_name: document.getElementById("editItemName").value,
+        in_out: document.getElementById("editInOut").value,
+        qty: document.getElementById("editQty").value,
+        item_details: document.getElementById("editDetails").value,
+        stock_entry: document.getElementById("editStockEntry").value,
+        grn_number: document.getElementById("editGRN").value,
+        tag_no: document.getElementById("editTagNo").value,
+        serial_no: document.getElementById("editSerialNo").value,
+        purpose: document.getElementById("editPurpose").value,
+        inventory_type: activeInventoryType
+    };
+
+    const sendFinalUpdate = (imageName) => {
+        if (imageName) payload.image_file = imageName; 
+        
+        // Disable button to prevent double-clicks
+        const updateBtn = document.querySelector("#editTransModal .btn-primary");
+        const ogText = updateBtn.innerText;
+        updateBtn.innerText = "Saving..."; updateBtn.disabled = true;
+
+        fetch(BASE_URL + "api_transactions.php", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) })
+        .then(r => r.json()).then(d => { 
+            if (d.success) { 
+                showToast("Transaction Updated!", "success"); 
+                document.getElementById("editTransModal").style.display = 'none'; 
+                refreshUI(); 
+            } else { 
+                showToast("Error: " + d.message, "error"); 
+            } 
+            updateBtn.innerText = ogText; updateBtn.disabled = false;
+        }).catch(err => {
+            showToast("⚠️ Server connection error.", "error");
+            updateBtn.innerText = ogText; updateBtn.disabled = false;
+        });
+    };
+
+    if (fileInput && fileInput.files.length > 0) {
+        let fd = new FormData();
+        fd.append("image", fileInput.files[0]);
+        const customName = document.getElementById("customImageName").value;
+        if(customName) fd.append("custom_name", customName);
+
+        fetch(BASE_URL + "upload.php", { method: "POST", body: fd }).then(r => r.json()).then(d => { 
+            if (d.success) sendFinalUpdate(d.filename); 
+            else showToast("Upload Failed: " + d.message, "error"); 
+        });
+    } else {
+        sendFinalUpdate(null); 
+    }
+}
+
+function previewFilename() {
+    const fileInput = document.getElementById("editImageUpload");
+    const nameInput = document.getElementById("customImageName");
+    const clearBtn = document.getElementById("clearEditImageBtn"); // Grab the clear button
+    
+    if(fileInput.files.length > 0) {
+        nameInput.style.display = "block";
+        nameInput.value = fileInput.files[0].name.split('.').slice(0, -1).join('.'); 
+        clearBtn.style.display = "block"; // Show clear button
+    } else { 
+        nameInput.style.display = "none"; 
+        clearBtn.style.display = "none"; // Hide clear button
+    }
+}
+
+// 👇 NEW FUNCTION: Empties the file input and hides the extra fields
+function clearEditImage() {
+    const fileInput = document.getElementById("editImageUpload");
+    fileInput.value = ""; // Erases the selected file
+    previewFilename();    // Triggers the function above to hide the boxes
+}
+
+function openStockEdit(n, i, p, rowUserId) { 
+    document.getElementById("editStockName").value = n;
+    document.getElementById("editStockNameDisplay").textContent = n;
+    document.getElementById("editPageNo").value = p;
+    document.getElementById("editInitialStock").value = i;
+    
+    // 🚨 FIX: Hide the specific User ID in the modal so we don't forget whose stock we are editing
+    document.getElementById("editStockModal").dataset.rowUserId = rowUserId;
+    
+    document.getElementById("editStockModal").style.display = "flex"; 
+}
+function saveStockEdit() { 
+    const n = document.getElementById("editStockName").value;
+    const p = document.getElementById("editPageNo").value;
+    const i = document.getElementById("editInitialStock").value;
+    const btn = document.querySelector("#editStockModal .btn-primary");
+    btn.innerText = "Saving..."; btn.disabled = true;
+
+    // 🚨 FIX: Pull the User ID back out of the modal before saving
+    let rowUserId = document.getElementById("editStockModal").dataset.rowUserId;
+    let targetUserId = rowUserId || getTargetUserId() || sessionStorage.getItem("userId");
+
+    fetch(BASE_URL + "api_items.php", {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name: n, item_name: n, page_no: p, initial_stock: i, inventory_type: activeInventoryType, user_id: targetUserId })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if(d.success){
+            document.getElementById("editStockModal").style.display = 'none';
+            showToast("Initial Stock Updated!", "success");
+            refreshUI(); 
+        } else { showToast("Error: " + d.message, "error"); }
+        btn.innerText = "Update"; btn.disabled = false;
+    })
+    .catch(err => { showToast("Network Error", "error"); btn.innerText = "Update"; btn.disabled = false; }); 
+}
+function deleteTransaction(id){ if(confirm("Delete this transaction?"))fetch(BASE_URL+"api_transactions.php",{method:"DELETE",headers:{"Content-Type":"application/json"},body:JSON.stringify({id:id,user_role:sessionStorage.getItem("userRole")})}).then(r=>r.json()).then(d=> { showToast("Transaction Deleted", "success"); refreshUI(); }); }
+
+function deleteItem(n, rowUserId) { 
+    if(!confirm("Delete this item?")) return;
+    
+    // 🚨 FIX: Force it to use the exact User ID attached to the row being clicked!
+    let targetUserId = rowUserId || getTargetUserId() || sessionStorage.getItem("userId");
+
+    fetch(BASE_URL + "api_items.php", {
+        method: "DELETE",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name: n, inventory_type: activeInventoryType, user_id: targetUserId })
+    })
+    .then(r => r.json())
+    .then(d => { 
+        showToast("Item Deleted", "success"); 
+        refreshUI(); 
+    }); 
+}
+
+function bulkDeleteStock() { 
+    if(sessionStorage.getItem("userRole") !== 'admin') return; 
+    let targetUserId = getTargetUserId(); 
+    
+    if (targetUserId === "") {
+        alert("⚠️ Please select a specific User from the dropdown to use Bulk Delete.");
+        return;
+    }
+
+    const s = Array.from(document.querySelectorAll('.stock-check:checked')).map(cb => cb.value); 
+    if(s.length > 0 && confirm("Delete selected items?")) {
+        Promise.all(s.map(n => fetch(BASE_URL+"api_items.php", {
+            method:"DELETE", 
+            headers:{"Content-Type":"application/json"}, 
+            body:JSON.stringify({ name: n, inventory_type: activeInventoryType, user_id: targetUserId })
+        }))).then(() => { 
+            showToast("Items Deleted", "success"); 
+            refreshUI(); 
+        }); 
+    }
+}
+
+function generateStockPDF() { 
+    const {jsPDF} = window.jspdf; 
+    const doc = new jsPDF(); 
+    
+    let itemsToPrint = globalItems;
+    let reportTitle = "Complete Stock Overview";
+    let fileName = "stock_report.pdf";
+
+    // Check if the user is currently viewing the Low Stock filter
+    if (typeof isFiltered !== 'undefined' && isFiltered) {
+        const threshold = parseInt(localStorage.getItem('low_stock_threshold')) || 2;
+        itemsToPrint = globalItems.filter(i => parseInt(i.current_stock) <= threshold);
+        reportTitle = `Low Stock Report (Threshold: <= ${threshold})`;
+        fileName = "low_stock_report.pdf";
+    }
+
+    doc.setFontSize(16);
+    doc.text(reportTitle, 14, 20); 
+    
+    // Improved headers to match the table
+    doc.autoTable({
+        startY: 25,
+        head: [["Item Name", "Page No.", "Initial", "Total In", "Total Out", "Current Stock"]],
+        body: itemsToPrint.map(i => [i.item_name, i.page_no || "-", i.initial_stock || 0, i.in_qty, i.out_qty, i.current_stock])
+    }); 
+    
+    doc.save(fileName); 
+}
+
+function exportExcel() {
+    let itemsToExport = globalItems;
+    let fileName = "Hardware_Stock_Full_Report.xlsx";
+
+    // Apply low stock filter to the Stock sheet if active
+    if (typeof isFiltered !== 'undefined' && isFiltered) {
+        const threshold = parseInt(localStorage.getItem('low_stock_threshold')) || 2;
+        itemsToExport = globalItems.filter(i => parseInt(i.current_stock) <= threshold);
+        fileName = "Hardware_Filtered_Report.xlsx";
+    }
+
+    // Apply active history filters to the History sheet
+    const transDataToExport = (typeof filteredTransactions !== 'undefined' && filteredTransactions.length > 0) 
+                              ? filteredTransactions 
+                              : transactions;
+
+    const stockData = itemsToExport.map(item => ({ "Item Name": item.item_name, "Page No.": item.page_no || "", "Initial Stock": item.initial_stock || 0, "Total In": item.in_qty, "Total Out": item.out_qty, "Current Stock": item.current_stock }));
+    
+    const transData = transDataToExport.map(t => ({ "Date": t.date, "Form No": t.form_no || "", "Item Name": t.item_name, "Type": t.in_out, "Qty": t.qty, "Emp ID": t.emp_id || "", "Location (From/To)": t.from_to || "", "Item Details": t.item_details || "", "Stock Entry": t.stock_entry || "", "GRN Number": t.grn_number || "", "Remarks": t.remarks || "" }));
+    
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(transData), "History");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(stockData), "Stock");
+    XLSX.writeFile(wb, fileName);
+}
+function generateHistoryPDF(){ const {jsPDF}=window.jspdf; const doc=new jsPDF('l','mm','a4'); doc.text("Transaction History",14,20); doc.autoTable({head:[["Date","Item","Type","Qty","Emp ID"]],body:filteredTransactions.map(t=>[t.date,t.item_name,t.in_out,t.qty,t.emp_id])}); doc.save("history.pdf"); }
+function handleFile(e) {
+    const f = e.target.files[0];
+    if (!f) return;
+    
+    const targetId = getTargetUserId();
+    if (sessionStorage.getItem("userRole") === 'admin' && targetId === "") {
+        alert("⚠️ Please select a specific User from the dropdown before importing data.");
+        e.target.value = ""; 
+        return;
+    }
+    
+    // Check if the current tab (Hardware/Consumable/Scrap) has data
+    fetch(`${BASE_URL}api_transactions.php?user_id=${targetId}&type=${activeInventoryType}`)
+    .then(r => r.json())
+    .then(check => {
+        if (check.success && check.data.length > 0) {
+            
+            // --- NEW: Ask the user if they want to WIPE or APPEND ---
+            const wipeData = confirm(
+                `⚠️ WARNING: You already have data in the ${activeInventoryType.toUpperCase()} tab!\n\n` +
+                `Do you want to WIPE the old data first?\n\n` +
+                `• Click [OK] to DELETE old data and replace it.\n` +
+                `• Click [Cancel] to KEEP old data and APPEND the new file.`
+            );
+            
+            if (wipeData) {
+                // Option A: User clicked OK. Wipe the database first.
+                fetch(`${BASE_URL}api_transactions.php`, {
+                    method: "DELETE",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        delete_all: true, 
+                        user_id: targetId,
+                        inventory_type: activeInventoryType
+                    })
+                })
+                .then(() => processImport(f, targetId));
+            } else {
+                // Option B: User clicked Cancel. Just append the data!
+                const confirmAppend = confirm("Add this new data to your existing records?");
+                if(confirmAppend) {
+                    processImport(f, targetId);
+                } else {
+                    e.target.value = ""; // They backed out entirely
+                }
+            }
+            
+        } else {
+            // Tab is empty, safe to import normally
+            processImport(f, targetId);
+        }
+    });
+}
+
+// Helper: Delete all transactions
+function deleteAllTransactions(userId) {
+    return fetch(`${BASE_URL}api_transactions.php`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            delete_all: true, 
+            user_id: userId,
+            user_role: sessionStorage.getItem("userRole"),
+            inventory_type: activeInventoryType // ADDED: Tells the backend which tab to clear
+        })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.success) {
+            alert("✅ Old data deleted");
+            return Promise.resolve();
+        } else {
+            throw new Error("Failed to delete old data");
+        }
+    });
+}
+
+// The actual import logic (same as before)
+function processImport(file, userId) {
+showLoader("Importing Inventory Data, Please Wait...");
+    const r = new FileReader();
+    
+    r.onload = async function(evt) {
+        try {
+            const d = evt.target.result;
+            const wb = XLSX.read(d, { type: "binary" });
+            
+            // --- 1. GATHER ALL STOCK DATA ---
+            let stockPayload = [];
+            const stockSheetName = wb.SheetNames.find(n => n.toLowerCase().includes("stock"));
+            
+            if (stockSheetName) {
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[stockSheetName]);
+                for (let row of rows) {
+                    const name = row["Item Name"] || row["Item"] || row["Name"];
+                    const page = row["Page No."] || row["Page"] || row["page_no"] || "";
+                    const initial = row["Intital Stock"] || row["Initial Stock"] || 0; 
+                    if (name) {
+                        stockPayload.push({
+                            name: name,
+                            page_no: page,
+                            initial_stock: initial,
+                            user_id: userId,
+                            inventory_type: activeInventoryType
+                        });
+                    }
+                }
+            }
+
+            // Send all items in ONE request
+            if (stockPayload.length > 0) {
+                let stockRes = await fetch(BASE_URL + "api_items.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(stockPayload)
+                });
+                
+                // NEW: Read the error if it crashes!
+                let stockData = await stockRes.json();
+                if (!stockData.success) {
+                    throw new Error("Stock DB Error: " + stockData.message);
+                }
+            }
+
+           // --- 2. GATHER ALL TRANSACTION DATA ---
+            let transPayload = [];
+            const transSheetName = wb.SheetNames.find(n => n.toLowerCase().includes("in-out") || n.toLowerCase().includes("in/out") || wb.SheetNames.length === 1);
+            
+            if (transSheetName) {
+                const rows = XLSX.utils.sheet_to_json(wb.Sheets[transSheetName]);
+                
+                for (let row of rows) {
+                    let cleanRow = {};
+                    for (let key in row) {
+                        let cleanKey = key.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+                        cleanRow[cleanKey] = row[key];
+                    }
+
+                    const name = cleanRow["itemname"] || cleanRow["item"];
+                    const qty = cleanRow["qty"];
+                    if (!name || !qty) continue;
+
+                    // 🚨 THE ULTIMATE DATE FIX: 
+                    // Grab 'date' if we find it. If not, grab the VERY FIRST piece of data in the row!
+                    let rawDate = cleanRow["date"];
+                    if (rawDate === undefined || rawDate === null) {
+                        rawDate = Object.values(row)[0]; 
+                    }
+                    
+                    let dateStr = new Date().toISOString().slice(0, 10); // Default to today
+                    
+                    if (rawDate !== undefined && rawDate !== null) {
+                        if (typeof rawDate === 'number') {
+                            const excelDate = new Date((rawDate - 25569) * 86400 * 1000);
+                            const y = excelDate.getUTCFullYear();
+                            const m = String(excelDate.getUTCMonth() + 1).padStart(2, '0');
+                            const d = String(excelDate.getUTCDate()).padStart(2, '0');
+                            dateStr = `${y}-${m}-${d}`;
+                        } else {
+                            let textDate = String(rawDate).trim();
+                            if (/^\d{4}-\d{2}-\d{2}$/.test(textDate)) {
+                                dateStr = textDate; 
+                            } else if (/^\d{1,2}[-\/]\d{1,2}[-\/]\d{4}$/.test(textDate)) {
+                                let parts = textDate.split(/[-\/]/);
+                                let d = parts[0].padStart(2, '0');
+                                let m = parts[1].padStart(2, '0');
+                                let y = parts[2].length === 2 ? '20' + parts[2] : parts[2];
+                                dateStr = `${y}-${m}-${d}`;
+                            } else {
+                                // Try native JS date
+                                let parsed = new Date(rawDate);
+                                if (!isNaN(parsed.getTime())) {
+                                    const y = parsed.getFullYear();
+                                    const m = String(parsed.getMonth() + 1).padStart(2, '0');
+                                    const d = String(parsed.getDate()).padStart(2, '0');
+                                    dateStr = `${y}-${m}-${d}`;
+                                } else {
+                                    dateStr = textDate; // Last resort
+                                }
+                            }
+                        }
+                    }
+
+                    let type = "IN";
+                    if (cleanRow["inout"] && String(cleanRow["inout"]).trim().toUpperCase() === "OUT") type = "OUT";
+
+                    // Smart Mapping: If it's an old backup, it puts "Remarks" into the Tag No box safely.
+                    // If it's a new backup, it maps the new columns perfectly.
+                    transPayload.push({
+                        date: dateStr, 
+                        form_no: cleanRow["formno"] || "", 
+                        item_name: name, 
+                        in_out: type, 
+                        qty: parseInt(qty || 0), 
+                        emp_id: cleanRow["empid"] || "", 
+                        from_to: cleanRow["fromto"] || "", 
+                        item_details: cleanRow["itemdetails"] || "", 
+                        stock_entry: cleanRow["stockentry"] || "", 
+                        grn_number: cleanRow["grnnumber"] || "", 
+                        tag_no: cleanRow["tagno"] || cleanRow["tag"] || cleanRow["remarks"] || "", 
+                        serial_no: cleanRow["serialno"] || cleanRow["serial"] || "", 
+                        purpose: cleanRow["purpose"] || "", 
+                        user_id: userId, 
+                        inventory_type: activeInventoryType
+                    });
+                }
+            }
+
+            // Send all transactions in ONE request
+            if (transPayload.length > 0) {
+                let transRes = await fetch(BASE_URL + "api_transactions.php", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(transPayload)
+                });
+                
+                let transData = await transRes.json();
+                if (!transData.success) {
+                    throw new Error("Transaction DB Error: " + transData.message);
+                }
+            }
+            
+          // 2. TURN OFF LOADER ON SUCCESS
+            hideLoader(); 
+            alert("✅ Import Complete!"); 
+            document.getElementById('fileInput').value = ""; 
+            refreshUI(); 
+            
+        } catch (err) {
+            // 3. TURN OFF LOADER ON ERROR
+            hideLoader(); 
+            alert("❌ " + err.message); 
+            document.getElementById('fileInput').value = ""; 
+        }
+    };
+    
+    r.readAsBinaryString(file);
+}
+
+
+function loadEmployeesFromServer() {
+    const targetId = getTargetUserId(); // FIX: Now respects Admin dropdown
+    if(!targetId) return;
+    fetch(`${BASE_URL}api_employees.php?user_id=${targetId}`)
+    .then(response => response.json())
+    .then(json => { 
+        if(json.success) { 
+            employeeList = json.data.map(e => ({ id: e.emp_id, location: e.location_name })); 
+            populateEmployeeSelect(); 
+        } 
+    });
+}
+
+function openAddEmpModal() { 
+    document.getElementById('newEmpId').value = ""; 
+    document.getElementById('newEmpLoc').value = ""; 
+    document.getElementById('addEmpModal').style.display = 'flex'; 
+}
+
+function saveNewEmployee() { 
+    const id = document.getElementById('newEmpId').value.trim(); 
+    const loc = document.getElementById('newEmpLoc').value.trim(); 
+    const targetId = getTargetUserId(); 
+    
+    // Swapped alert for warning toast
+    if(!id || !loc) return showToast("Please fill all fields", "warning"); 
+    
+    fetch(BASE_URL + "api_employees.php", { 
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ emp_id: id, location_name: loc, user_id: targetId }) 
+    }).then(r => r.json()).then(d => { 
+        if(d.success) { 
+            showToast("Employee Added Successfully!", "success"); // ✅ New Toast
+            document.getElementById('addEmpModal').style.display = 'none'; 
+            loadEmployeesFromServer(); 
+        } else { 
+            showToast("Error: " + d.message, "error"); // ❌ New Toast
+        } 
+    }); 
+}
+
+function openManageEmpModal() { 
+    const targetId = getTargetUserId(); // FIX
+    fetch(BASE_URL + "api_employees.php?user_id=" + targetId)
+    .then(r => r.json())
+    .then(d => { 
+        if(d.success) { 
+            const tbody = document.querySelector("#manageEmpTable tbody"); 
+            tbody.innerHTML = ""; 
+            d.data.forEach(emp => { 
+                const tr = document.createElement("tr"); 
+                tr.innerHTML = `<td>${emp.emp_id}</td><td>${emp.location_name}</td><td><button class="btn btn-ghost" style="color:var(--danger);" onclick="deleteEmployee('${emp.emp_id}')">Delete</button></td>`; 
+                tbody.appendChild(tr); 
+            }); 
+            document.getElementById('manageEmpModal').style.display = 'flex'; 
+        } 
+    }); 
+}
+
+function deleteEmployee(empId) { 
+    // We keep confirm() here because it's a destructive action and we want to be safe!
+    if(!confirm("Are you sure you want to delete this employee?")) return; 
+    
+    const targetId = getTargetUserId(); 
+    fetch(BASE_URL + "api_employees.php", { 
+        method: "DELETE", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ emp_id: empId, user_id: targetId }) 
+    }).then(r => r.json()).then(d => { 
+        if(d.success) { 
+            showToast("Employee Deleted", "success"); // ✅ New Toast
+            openManageEmpModal(); 
+            loadEmployeesFromServer(); 
+        } else { 
+            showToast("Error: " + d.message, "error"); // ❌ New Toast
+        } 
+    }); 
+}
+function checkAdminControls() { if(sessionStorage.getItem("userRole") === 'admin') { const btn = document.getElementById("btnManageEmp"); if(btn) btn.style.display = "inline-block"; } }
+function filterEntries() { runMasterFilter(); }
+function filterByColumn() { runMasterFilter(); }
+function clearFilter() { document.getElementById("searchInput").value=""; document.getElementById("filterStartDate").value=""; document.getElementById("filterEndDate").value=""; document.querySelectorAll('.col-filter').forEach(i => i.value = ""); runMasterFilter(); }
+
+let isFiltered = false;
+
+function filterLowStock() {
+    showView('stock');
+    
+    if (isFiltered) {
+        // Reset to show all
+        renderStockTable();
+        isFiltered = false;
+        alert("✅ Showing all items");
+    } else {
+        // 🚨 THE FIX: Get the dynamic limit from the Admin Panel
+        const threshold = parseInt(localStorage.getItem('low_stock_threshold')) || 2;
+
+        // Show only low stock using our dynamic setting
+        const lowItems = globalItems.filter(i => parseInt(i.current_stock) <= threshold);
+        
+        const tbody = document.querySelector("#stockTable tbody"); 
+        tbody.innerHTML = "";
+        const role = sessionStorage.getItem("userRole");
+        
+        lowItems.forEach(i => {
+            const tr = document.createElement("tr");
+            let acts = `<button class="btn btn-ghost btn-small" onclick="openStockEdit('${i.item_name}', ${i.initial_stock}, '${i.page_no || ''}', ${i.user_id})">Edit</button>`;
+            if(role === 'admin') acts += ` <button class="btn btn-ghost btn-small" style="color:var(--danger);" onclick="deleteItem('${i.item_name}', ${i.user_id})">Del</button>`;
+            
+            tr.innerHTML = `
+                <td class="bulk-select-col"><input type="checkbox" class="stock-check" value="${i.item_name}"></td>
+                <td style="font-weight:600;">${i.item_name}</td>
+                <td>${i.page_no || "-"}</td>
+                <td>${i.initial_stock || 0}</td>
+                <td>${i.in_qty}</td>
+                <td>${i.out_qty}</td>
+                <td style="color:var(--danger); font-weight:bold;">${i.current_stock}</td>
+                <td>${acts}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+        isFiltered = true;
+        // Updated the alert to show the threshold limit being used
+        alert(`⚠️ Filtered: ${lowItems.length} Low Stock items (<= ${threshold})\n\n(Click Low Stock card again to reset)`);
+    }
+}
+
+
+// --- 8. INITIALIZATION ---
+window.onload = function() {
+    if(sessionStorage.getItem("hardwareUser")){
+        if (!window.location.hash) history.pushState({view: 'dashboard'}, null, "#dashboard");
+        loadEmployeesFromServer();
+        document.getElementById("loginScreen").style.display="none"; 
+        document.getElementById("appShell").style.display="flex";
+        document.getElementById("userDisplay").textContent=sessionStorage.getItem("hardwareUser");
+        document.getElementById("roleBadge").textContent=sessionStorage.getItem("userRole").toUpperCase();
+        
+        if(sessionStorage.getItem("userRole")==='admin') {
+            document.body.classList.add('is-admin'); 
+            document.getElementById("adminControls").style.display='block';
+            fetch(BASE_URL+"api_users.php").then(res=>res.json()).then(d=>{ if(d.success){ const f=document.getElementById("adminUserFilter"); f.innerHTML='<option value="">View: All / My Stock</option>'; d.data.forEach(u=>{ let o=document.createElement("option"); o.value=u.id; o.textContent=`View: ${u.username}`; f.appendChild(o); }); } });
+        }
+        const currentHash = window.location.hash.substring(1);
+        if(currentHash && ['dashboard','transaction','stock','history'].includes(currentHash)) showView(currentHash, false); else showView('dashboard', false);
+        refreshUI(); 
+        document.getElementById("dateInput").value=new Date().toISOString().slice(0,10);
+        checkAdminControls();
+    } else {
+        document.getElementById("loginScreen").style.display="flex";
+        document.getElementById("appShell").style.display="none";
+    }
+
+    document.getElementById("loginBtn").onclick=()=>{ 
+        const u=document.getElementById("loginUser").value; const p=document.getElementById("loginPass").value;
+        fetch(BASE_URL+"login.php",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({username:u,password:p})})
+        .then(r=>r.json()).then(d=>{ if(d.success){ sessionStorage.setItem("hardwareUser",d.username); sessionStorage.setItem("userId",d.userid); sessionStorage.setItem("userRole",d.role); location.reload(); } else { document.getElementById("loginError").style.display="block"; } }); 
+    };
+	// --- FIX: Allow pressing "Enter" to log in ---
+    const handleLoginEnter = (e) => {
+        if (e.key === 'Enter') {
+            document.getElementById("loginBtn").click();
+        }
+    };
+    document.getElementById("loginUser").addEventListener("keypress", handleLoginEnter);
+    document.getElementById("loginPass").addEventListener("keypress", handleLoginEnter);
+    // ---------------------------------------------
+    document.getElementById("inBtn").onclick=()=>addTransaction("IN");
+    document.getElementById("outBtn").onclick=()=>addTransaction("OUT");
+    document.getElementById("addItemBtn").onclick=addNewItem;
+    document.getElementById("fileInput").addEventListener("change",handleFile);
+};
+// ==========================================
+// 📦 SNIPE-IT CONSUMABLE VERIFICATION MAGIC
+// ==========================================
+document.getElementById('itemSelect').addEventListener('change', async function() {
+    
+    // 🚨 Only run this if we are actively on the Consumable tab
+    if (activeInventoryType !== 'consumable') return;
+
+    const itemName = this.value.trim();
+    if (!itemName) return;
+
+    try {
+        // Show a loading toast
+        showToast("🔍 Verifying '" + itemName + "' in Snipe-IT...", "warning");
+
+        const res = await fetch(`api_snipeit.php?action=get_consumable_by_name&name=${encodeURIComponent(itemName)}`);
+        const result = await res.json();
+
+        if (result.success && result.data) {
+            const snipeName = result.data.name;
+            const remaining = result.data.remaining || 0;
+            
+            // Success! It found a perfect match.
+            showToast(`✅ Verified in Snipe-IT! Name matches perfectly. (${remaining} remaining in pool)`, "success");
+        } else {
+            // Warning! Snipe-IT doesn't know this item, so the background checkout will fail.
+            showToast(`⚠️ "${itemName}" not found in Snipe-IT. Check your spelling!`, "error");
+        }
+    } catch (e) {
+        console.error("Snipe-IT fetch error:", e);
+        showToast("❌ Snipe-IT Connection Error.", "error");
+    }
+});
+/// ==========================================
+// 🚀 SNIPE-IT AUTO-FILL MAGIC (HARDWARE & SCRAP ENABLED)
+// ==========================================
+async function processTagScan() {
+    // 🚨 1. ALLOW SCANNER ON BOTH HARDWARE AND SCRAP TABS!
+    if (activeInventoryType !== 'hardware' && activeInventoryType !== 'scrap') return;
+
+    const tagInput = document.getElementById('tagNoInput');
+    const tag = tagInput.value.trim();
+    if (!tag) return;
+
+    try {
+        showToast("🔍 Searching Snipe-IT for " + tag + "...", "warning");
+
+        const res = await fetch(`api_snipeit.php?action=get_asset_by_tag&tag=${encodeURIComponent(tag)}`);
+        const result = await res.json();
+
+        if (result.success && result.data && result.data.id) {
+            const asset = result.data;
+            
+            // ==========================================
+            // 🛑 2. DYNAMIC SCRAP & ARCHIVE SECURITY CHECK
+            // ==========================================
+            if (asset.status_label) {
+                const statusMeta = asset.status_label.status_meta || ""; 
+                const statusName = asset.status_label.name ? asset.status_label.name.toLowerCase() : "";
+                const isScrap = (statusMeta === 'archived' || statusMeta === 'undeployable' || statusName.includes('scrap'));
+
+                // RULE A: If on Hardware Tab, strictly block Scrap items!
+                if (activeInventoryType === 'hardware' && isScrap) {
+                    showToast(`🛑 BLOCKED: Tag ${tag} is marked as "${asset.status_label.name}"!`, "error");
+                    tagInput.value = ''; 
+                    document.getElementById('serialNoInput').value = '';
+                    document.getElementById('itemDetailsInput').value = '';
+                    document.getElementById('itemSelect').value = '';
+                    return; 
+                }
+                
+                // RULE B: If on Scrap Tab, allow it, but warn if it is still an Active laptop.
+                if (activeInventoryType === 'scrap' && !isScrap) {
+                    showToast(`⚠️ Note: Tag ${tag} is currently Active. Scraping it will archive it!`, "warning");
+                }
+            }
+            // ==========================================
+
+            // ✅ 3. Fill Serial Number
+            document.getElementById('serialNoInput').value = asset.serial ? asset.serial : '';
+            
+            // ✅ 4. Safely Fill Item Name & Description
+            let snipeModelName = "";
+            if (asset.model && asset.model.name) {
+                snipeModelName = asset.model.name;
+            }
+            
+            let snipeItemName = "";
+            if (asset.name && typeof asset.name === 'string' && asset.name.trim() !== "") {
+                snipeItemName = asset.name;
+            } else {
+                snipeItemName = snipeModelName; 
+            }
+
+            document.getElementById('itemSelect').value = snipeItemName;
+            document.getElementById('itemDetailsInput').value = snipeModelName;
+            
+            // ✅ 5. Safely Fill Employee Details (ONLY if checked out in Snipe-IT!)
+            if (asset.assigned_to) {
+                let snipeName = asset.assigned_to.name ? asset.assigned_to.name : "";
+                let snipeUsername = asset.assigned_to.username ? asset.assigned_to.username : "";
+                let snipeEmpNum = asset.assigned_to.employee_number ? asset.assigned_to.employee_number : "";
+                
+                let matchedEmp = employeeList.find(e => {
+                    let idMatch = (e.id == snipeUsername || e.id == snipeEmpNum);
+                    let locMatch1 = (e.location && snipeName && e.location.toLowerCase().includes(snipeName.toLowerCase()));
+                    let locMatch2 = (snipeName && e.location && snipeName.toLowerCase().includes(e.location.toLowerCase()));
+                    return idMatch || locMatch1 || locMatch2;
+                });
+
+                if (matchedEmp) {
+                    document.getElementById('empIdInput').value = `${matchedEmp.id} - ${matchedEmp.location}`;
+                    document.getElementById('fromToInput').value = matchedEmp.location;
+                    showToast(`✅ Asset & Employee Auto-Filled!`, "success");
+                } else {
+                    document.getElementById('empIdInput').value = snipeUsername || snipeEmpNum || "Snipe-User";
+                    document.getElementById('fromToInput').value = snipeName;
+                    showToast("✅ Asset & User Auto-Filled! (Snipe-IT)", "success");
+                }
+            } else {
+                document.getElementById('empIdInput').value = '';
+                document.getElementById('fromToInput').value = '';
+                showToast("✅ Asset Auto-Filled!", "success");
+            }
+
+        } else {
+            showToast("⚠️ Tag not found in Snipe-IT.", "error");
+        }
+    } catch (e) {
+        console.error("Snipe-IT Javascript Error:", e);
+        showToast("❌ Connection Error. Check console.", "error");
+    }
+}
+
+// 🚨 Trigger on both clicking away AND pressing Enter
+document.getElementById('tagNoInput').addEventListener('blur', processTagScan);
+document.getElementById('tagNoInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        processTagScan();
+    }
+});
+// --- LIVE STOCK SEARCH ---
+document.getElementById('stockSearch').addEventListener('input', function() {
+    const searchTerm = this.value.toLowerCase();
+    // Grab all rows inside the stock table body
+    const rows = document.querySelectorAll('#stockTable tbody tr'); 
+
+    rows.forEach(row => {
+        // Read the text of the entire row
+        const rowText = row.textContent.toLowerCase();
+        
+        // If the row contains the typed text, show it. Otherwise, hide it.
+        if (rowText.includes(searchTerm)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// --- FETCH GLOBAL SETTINGS FOR ALL USERS ON LOAD ---
+function loadGlobalSettings() {
+    fetch("api_admin.php?action=get_settings")
+        .then(r => r.json())
+        .then(d => {
+            if (d.success) {
+                // Update the local storage so the warning threshold works everywhere
+                const threshold = d.data.low_stock_threshold || 5;
+                localStorage.setItem('low_stock_threshold', threshold);
+                
+                // If you use the custom App Name or Company Name in your HTML, you can apply them here too!
+                if(d.data.app_name) document.title = d.data.app_name;
+            }
+        })
+        .catch(err => console.log("Settings load skipped."));
+}
+
+// Run this as soon as the app starts!
+loadGlobalSettings();
+
+// --- PRO KEYBOARD SHORTCUTS ---
+document.addEventListener('keydown', function(e) {
+    // 1. Press 'Ctrl + K' (or Cmd + K) to jump to the Stock Search
+    if ((e.ctrlKey || e.metaKey) && e.key === 'i') {
+        e.preventDefault(); 
+        showView('stock'); 
+        document.getElementById('stockSearch').focus(); 
+    }
+    
+    // 2. Press 'Alt + N' to open New Transaction
+    if (e.altKey && e.key === 'n') {
+        e.preventDefault();
+        showView('transaction');
+    }
+});
+// --- SMART SIDEBAR LOGIC ---
+
+// 1. Universal Toggle Button (Handles both Desktop & Mobile)
+function toggleSidebar() {
+    if (window.innerWidth <= 900) {
+        // Mobile behavior
+        document.getElementById('appSidebar').classList.toggle('active');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.toggle('active');
+    } else {
+        // Desktop behavior (slides out of the way)
+        document.body.classList.toggle('sidebar-closed');
+    }
+}
+
+// 2. Auto-hide when selecting the History Tab
+function openHistoryTab() {
+    showView('history'); // Switch the view
+    
+    // Mobile auto-close
+    if (window.innerWidth <= 900) {
+        document.getElementById('appSidebar').classList.remove('active');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.remove('active');
+    } 
+    // Desktop auto-close (Maximizes screen for the wide table!)
+    else {
+        document.body.classList.add('sidebar-closed');
+    }
+}
+
+// 3. Auto-expand when selecting normal tabs
+function openNormalTab(viewName) {
+    showView(viewName); // Switch the view
+    
+    // Mobile auto-close
+    if (window.innerWidth <= 900) {
+        document.getElementById('appSidebar').classList.remove('active');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (overlay) overlay.classList.remove('active');
+    } 
+    // Desktop auto-open (Brings menu back when leaving history)
+    else {
+        document.body.classList.remove('sidebar-closed');
+    }
+}
+// --- THEME TOGGLE LOGIC ---
+// --- THEME TOGGLE LOGIC ---
+function toggleTheme() {
+    const isLight = document.getElementById('themeToggle').checked;
+    const themeLabel = document.getElementById('themeLabel'); // Grab the text label
+    
+    if (isLight) {
+        document.documentElement.setAttribute('data-theme', 'light');
+        localStorage.setItem('app_theme', 'light');
+        if (themeLabel) themeLabel.innerText = "Switch to Dark Mode"; // Change text
+    } else {
+        document.documentElement.removeAttribute('data-theme');
+        localStorage.setItem('app_theme', 'dark');
+        if (themeLabel) themeLabel.innerText = "Switch to Light Mode"; // Change text
+    }
+    
+    // Refresh charts so their text colors match the new background!
+    if (typeof updateCharts === "function") {
+        updateCharts(); 
+    }
+}
+
+// Check saved theme on page load
+document.addEventListener('DOMContentLoaded', () => {
+    const savedTheme = localStorage.getItem('app_theme');
+    const themeLabel = document.getElementById('themeLabel');
+    const toggleBtn = document.getElementById('themeToggle');
+    
+    if (savedTheme === 'light') {
+        document.documentElement.setAttribute('data-theme', 'light');
+        if(toggleBtn) toggleBtn.checked = true;
+        if(themeLabel) themeLabel.innerText = "Switch to Dark Mode"; // Set text on load
+    } else {
+        // Explicitly set it to Light Mode text if currently in Dark Mode
+        if(themeLabel) themeLabel.innerText = "Switch to Light Mode"; 
+    }
+});
+</script>
+<script>
+    if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('sw.js');
+    }
+</script>
+<button id="chatbotBtn" onclick="toggleChatbot()" style="position: fixed; bottom: 30px; right: 30px; width: 60px; height: 60px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; border: none; box-shadow: 0 8px 25px rgba(14, 165, 233, 0.5); font-size: 24px; cursor: pointer; z-index: 99999; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); display: flex; align-items: center; justify-content: center;">
+    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        <path d="M8 10h.01"></path><path d="M12 10h.01"></path><path d="M16 10h.01"></path>
+    </svg>
+</button>
+
+<div id="chatbotWindow" style="display: none; position: fixed; bottom: 100px; right: 30px; width: 360px; height: 550px; background: var(--modal-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid var(--border-color); border-radius: 20px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.6); z-index: 99999; flex-direction: column; overflow: hidden; animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);">
+    
+    <div style="background: linear-gradient(135deg, #0f172a, #1e293b); padding: 18px 20px; color: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.05);">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0ea5e9, #38bdf8); display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: 0 4px 10px rgba(14, 165, 233, 0.4);">
+                🤖
+            </div>
+            <div>
+                <h3 style="margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.3px;">Amity IT Copilot</h3>
+                <div style="display: flex; align-items: center; gap: 5px; margin-top: 2px;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                    <span style="font-size: 11px; opacity: 0.7;">Online & Ready</span>
+                </div>
+            </div>
+        </div>
+        <button onclick="toggleChatbot()" style="background: rgba(255,255,255,0.1); border: none; color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.2)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'">✖</button>
+    </div>
+
+    <div id="chatMessages" style="flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; background: var(--bg-body);">
+        <div style="align-self: flex-start; background: var(--card-bg); border: 1px solid var(--border-color); padding: 12px 16px; border-radius: 2px 16px 16px 16px; color: var(--text-main); font-size: 13px; max-width: 85%; line-height: 1.5; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            Hello! I'm your Amity IT inventory assistant. How can I help you manage the stock today?
+        </div>
+    </div>
+
+    <div style="padding: 10px 15px; display: flex; gap: 8px; overflow-x: auto; background: var(--bg-body); border-top: 1px solid var(--border-color); white-space: nowrap; scrollbar-width: none;">
+        <style>
+            .ai-chip { background: rgba(14, 165, 233, 0.1); border: 1px solid rgba(14, 165, 233, 0.3); color: var(--accent); padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+            .ai-chip:hover { background: var(--accent); color: white; transform: translateY(-2px); box-shadow: 0 4px 10px rgba(14,165,233,0.3); }
+            .ai-chip::-webkit-scrollbar { display: none; }
+        </style>
+        <button class="ai-chip" onclick="sendChatMessage('Show me items with low stock')">📉 Low Stock?</button>
+        <button class="ai-chip" onclick="sendChatMessage('What is the total unit count?')">📊 Total Units?</button>
+        <button class="ai-chip" onclick="sendChatMessage('Show recent hardware transactions')">🕒 Recent Activity</button>
+    </div>
+
+    <div style="padding: 15px; border-top: 1px solid var(--border-color); display: flex; gap: 10px; background: var(--card-bg);">
+        <input type="text" id="chatInput" placeholder="Ask about your hardware..." onkeypress="handleChatEnter(event)" style="flex: 1; background: var(--input-bg); border: 1px solid var(--border-color); color: var(--text-main); padding: 12px 16px; border-radius: 25px; outline: none; margin: 0; font-size: 13px; transition: border-color 0.3s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-color)'">
+        
+        <button onclick="sendChatMessage()" style="background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; box-shadow: 0 4px 10px rgba(14,165,233,0.3);" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-left:-2px; margin-top:2px;">
+                <line x1="22" y1="2" x2="11" y2="13"></line>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+            </svg>
+        </button>
+    </div>
+</div>
+
+<script>
+    function toggleChatbot() {
+        const chatWindow = document.getElementById("chatbotWindow");
+        const chatBtn = document.getElementById("chatbotBtn");
+        if (chatWindow.style.display === "none") {
+            chatWindow.style.display = "flex";
+            chatBtn.style.transform = "scale(0.8) rotate(-15deg)";
+            setTimeout(() => document.getElementById("chatInput").focus(), 100);
+        } else {
+            chatWindow.style.display = "none";
+            chatBtn.style.transform = "scale(1) rotate(0deg)";
+        }
+    }
+
+    function handleChatEnter(e) {
+        if (e.key === 'Enter') sendChatMessage();
+    }
+
+    function appendMessage(sender, text) {
+        const msgDiv = document.createElement("div");
+        msgDiv.style.maxWidth = "85%";
+        msgDiv.style.padding = "12px 16px";
+        msgDiv.style.fontSize = "13px";
+        msgDiv.style.lineHeight = "1.5";
+        msgDiv.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+        
+        if (sender === "user") {
+            msgDiv.style.alignSelf = "flex-end";
+            msgDiv.style.background = "linear-gradient(135deg, #0ea5e9, #0284c7)";
+            msgDiv.style.border = "none";
+            msgDiv.style.borderRadius = "16px 2px 16px 16px";
+            msgDiv.style.color = "white";
+        } else {
+            msgDiv.style.alignSelf = "flex-start";
+            msgDiv.style.background = "var(--card-bg)";
+            msgDiv.style.border = "1px solid var(--border-color)";
+            msgDiv.style.borderRadius = "2px 16px 16px 16px";
+            msgDiv.style.color = "var(--text-main)";
+        }
+        
+        msgDiv.innerHTML = text;
+        
+        // Slight pop-in animation
+        msgDiv.style.opacity = "0";
+        msgDiv.style.transform = "translateY(10px)";
+        msgDiv.style.transition = "all 0.3s ease-out";
+        
+        const chatContainer = document.getElementById("chatMessages");
+        chatContainer.appendChild(msgDiv);
+        
+        // Trigger animation
+        setTimeout(() => {
+            msgDiv.style.opacity = "1";
+            msgDiv.style.transform = "translateY(0)";
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 10);
+    }
+
+    function sendChatMessage(presetMsg = null) {
+        const input = document.getElementById("chatInput");
+        const msg = presetMsg || input.value.trim();
+        if (!msg) return;
+
+        appendMessage("user", msg);
+        if(!presetMsg) input.value = "";
+
+        const loadingId = "loading-" + Date.now();
+        const chatContainer = document.getElementById("chatMessages");
+        const loadingDiv = document.createElement("div");
+        loadingDiv.id = loadingId;
+        loadingDiv.style.alignSelf = "flex-start";
+        loadingDiv.style.fontSize = "12px";
+        loadingDiv.style.color = "var(--text-muted)";
+        loadingDiv.style.background = "var(--card-bg)";
+        loadingDiv.style.padding = "8px 12px";
+        loadingDiv.style.borderRadius = "2px 12px 12px 12px";
+        loadingDiv.style.border = "1px solid var(--border-color)";
+        loadingDiv.innerHTML = "<span style='animation: pulse 1.5s infinite; opacity: 0.5;'>🤖 Analyzing data...</span>";
+        chatContainer.appendChild(loadingDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        fetch(BASE_URL + "api_chatbot.php", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: msg, type: activeInventoryType })
+        })
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById(loadingId).remove();
+            if (data.reply) {
+                appendMessage("ai", data.reply);
+            } else {
+                appendMessage("ai", "I couldn't retrieve that information right now.");
+            }
+        })
+        .catch(err => {
+            document.getElementById(loadingId).remove();
+            appendMessage("ai", "⚠️ Connection error. Please check the network.");
+        });
+    }
+	
+	// ==========================================
+// 1. THE SMART ROUTER (MASTER/DETAIL UPGRADE)
+// ==========================================
+async function printSmartSlip(transactionId) {
+    const baseTx = transactions.find(t => t.id == transactionId);
+    if (!baseTx) return;
+
+    // 🚀 NEW: Group all transactions that share this exact Form Number!
+    let txGroup = [baseTx];
+    if (baseTx.form_no && baseTx.form_no.trim() !== "") {
+        txGroup = transactions.filter(t => t.form_no === baseTx.form_no && t.inventory_type === baseTx.inventory_type);
+    }
+
+    // 🚀 NEW: Fetch Department & Location dynamically from Snipe-IT!
+    let snipeData = { department: "", location: "" };
+    const rawEmpId = baseTx.emp_id ? baseTx.emp_id.split(' - ')[0].trim() : "";
+    
+    if (rawEmpId) {
+        showToast("🔍 Fetching Dept/Location from Snipe-IT...", "warning");
+        try {
+            const res = await fetch(`api_snipeit.php?action=get_user_by_emp_id&emp_id=${encodeURIComponent(rawEmpId)}`);
+            const result = await res.json();
+            if (result.success && result.data) {
+                snipeData.department = result.data.department ? result.data.department.name : "";
+                snipeData.location = result.data.location ? result.data.location.name : "";
+                showToast("✅ Employee Details Synced!", "success");
+            } else {
+                showToast("⚠️ Employee not found in Snipe-IT, using blanks.", "error");
+            }
+        } catch(e) {
+            console.error("Snipe-IT fetch error:", e);
+        }
+    }
+
+    if (baseTx.inventory_type === 'consumable') {
+        const itemName = (baseTx.item_name || "").toLowerCase();
+        if (itemName.includes('toner') || itemName.includes('cartridge')) {
+            generateTonerSlip(txGroup, snipeData);
+        } else {
+            generateGeneralConsumableSlip(txGroup, snipeData);
+        }
+    } else {
+        generateStandardSlip(txGroup, snipeData);
+    }
+}
+
+// ==========================================
+// 2. HARDWARE & SCRAP SLIP GENERATOR
+// ==========================================
+function generateStandardSlip(txGroup, snipeData) {
+    const tx = txGroup[0]; // Base header info off the first item
+    const isIssue = tx.in_out.toUpperCase() === "OUT";
+    let prefix = tx.inventory_type === 'scrap' ? "Scrap " : "";
+    const slipTitle = isIssue ? `${prefix}Issue-Slip` : `${prefix}Receive-Slip`;
+
+    const txDate = new Date(tx.date || new Date());
+    const year = txDate.getFullYear();
+    const month = txDate.getMonth(); 
+    const fy = month >= 3 ? `${year}-${(year+1).toString().slice(-2)}` : `${year-1}-${year.toString().slice(-2)}`;
+    const consumePrefix = isIssue ? `ITAUMANESAR/ISS/${fy}/` : `ITAUMANESAR/REC/${fy}/`;
+
+    let empCode = tx.emp_id ? tx.emp_id.split(' - ')[0].trim() : "___________________";
+    let employeeName = tx.from_to || "___________________"; 
+    
+    // Auto-fill Snipe-IT data or leave lines for handwriting
+    let dept = snipeData.department || "___________________________";
+    let loc = snipeData.location || "___________________________";
+
+    // 🚀 NEW: Loop through all items in the group to build the table rows
+    let itemRows = "";
+    txGroup.forEach((item, index) => {
+        let srNo = (index + 1).toString().padStart(2, '0');
+        let qty = parseInt(item.qty) < 10 ? '0' + item.qty : item.qty;
+        itemRows += `<tr><td>${srNo}</td><td style="text-align: left;">${item.item_name}</td><td>${qty}</td><td>${item.serial_no||''}</td><td>${item.tag_no||''}</td><td>${item.purpose||''}</td></tr>`;
+    });
+
+    const printWindow = window.open('', '', 'height=900,width=800');
+    printWindow.document.write('<html><head><title>Amity ' + slipTitle + '</title>');
+    printWindow.document.write(`
+        <style>
+            body { font-family: 'Times New Roman', Times, serif; padding: 40px; color: #000; font-size: 15px; line-height: 1.5; }
+            .document { max-width: 800px; margin: 0 auto; border: 2px solid #000; padding: 30px; position: relative; }
+            .logo-area { position: absolute; top: 30px; left: 30px; width: 80px; height: 100px; border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .header h1 { margin: 0; font-size: 32px; letter-spacing: 1px; font-weight: bold; }
+            .header h2 { margin: 0; font-size: 20px; font-weight: normal; }
+            .header h3 { margin: 15px 0 0 0; text-decoration: underline; font-size: 20px; }
+            .form-details { display: flex; justify-content: space-between; margin-bottom: 30px; font-weight: bold; }
+            .form-details div { margin-bottom: 8px; }
+            .user-details table { width: 100%; border: none; margin-bottom: 30px; }
+            .user-details td { padding: 5px; border: none; font-size: 16px; font-weight: bold; }
+            .user-details td:first-child { width: 140px; }
+            .item-table { width: 100%; border-collapse: collapse; margin-bottom: 50px; }
+            .item-table th, .item-table td { border: 1px solid #000; padding: 10px; text-align: center; font-weight: bold; }
+            .item-table th { font-weight: bold; text-transform: uppercase; }
+            .footer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 60px; font-weight: bold; }
+            .footer-block { display: flex; flex-direction: column; gap: 15px; }
+            .office-use { border: 2px solid #000; padding: 20px; margin-top: 50px; }
+            @media print { body { padding: 0; } .document { border: none; padding: 0; } .logo-area { border: none; } }
+        </style>
+    `);
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(`
+        <div class="document">
+            <div class="logo-area">LOGO<br>SPACE</div>
+            <div class="header">
+                <h1>AMITY UNIVERSITY</h1>
+                <h2>HARYANA</h2>
+                <h3>${slipTitle}</h3>
+            </div>
+            <div class="form-details">
+                <div>
+                    <div>Consumption No: ${consumePrefix} ____________</div>
+                    <div>FORM NO: ${tx.form_no || "___________________"}</div>
+                </div>
+                <div>
+                    <div>Date: ${tx.date}</div>
+                    <div style="font-weight:normal; font-size: 13px;">(Temporary issue for ___ days)</div>
+                </div>
+            </div>
+            <div class="user-details">
+                <table>
+                    <tr><td>EmployCode</td><td>: ${empCode}</td></tr>
+                    <tr><td>User Name</td><td>: ${employeeName !== "___________________" ? "Mr./Ms. " + employeeName : employeeName}</td></tr>
+                    <tr><td>Deptt</td><td>: ${dept}</td></tr>
+                    <tr><td>Location</td><td>: ${loc}</td></tr>
+                    <tr><td>Mobile No</td><td>: ___________________________</td></tr>
+                </table>
+            </div>
+            <div style="font-weight:bold; margin-bottom: 10px; text-decoration: underline;">The following table:</div>
+            <table class="item-table">
+                <thead><tr><th style="width:60px;">SR NO.</th><th>ITEMS/SPECIFICATION</th><th style="width:60px;">Qty.</th><th>SERIAL NO.</th><th>TAG NO.</th><th>PURPOSE</th></tr></thead>
+                <tbody>${itemRows}</tbody>
+            </table>
+            <div class="footer-grid">
+                <div class="footer-block"><div>Emp Code &nbsp;&nbsp;&nbsp;&nbsp;: ${empCode}</div><div>With Name &nbsp;&nbsp;&nbsp;: ${employeeName}</div></div>
+                <div class="footer-block"><div>Receiver Signature &nbsp;&nbsp;: _____________________</div><div style="margin-top:30px;">Date &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: _____________________</div></div>
+            </div>
+            <div class="office-use">
+                <div style="text-align:center; text-decoration:underline; font-weight:bold; margin-bottom:30px; font-size:18px;">For office use only</div>
+                <div style="font-weight:bold; margin-bottom:25px;">Stock entry no- ________________________________________________________________</div>
+                <div style="font-weight:bold;">Entry Made by: ________________________</div>
+            </div>
+        </div>
+    `);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    setTimeout(() => { printWindow.print(); }, 500);
+}
+
+// ==========================================
+// 3. TONER & CARTRIDGE SLIP
+// ==========================================
+function generateTonerSlip(txGroup, snipeData) {
+    const tx = txGroup[0];
+    let empCode = tx.emp_id ? tx.emp_id.split(' - ')[0].trim() : " ";
+    let employeeName = tx.from_to || " "; 
+    let dept = snipeData.department || "";
+    let loc = snipeData.location || "";
+
+    let itemRows = "";
+    txGroup.forEach((item, index) => {
+        itemRows += `
+            <tr class="center bold" style="height: 60px;">
+                <td>${index + 1}</td>
+                <td>${item.item_details || " "}</td>
+                <td>${item.tag_no || ''}</td>
+                <td>${item.item_name}</td>
+                <td>${item.qty}</td>
+                <td>${item.purpose || ''}</td>
+            </tr>
+        `;
+    });
+
+    const printWindow = window.open('', '', 'height=900,width=800');
+    printWindow.document.write('<html><head><title>Toner Issue Slip</title>');
+    printWindow.document.write(`
+        <style>
+            body { font-family: 'Arial', sans-serif; padding: 20px; color: #000; font-size: 14px; }
+            table { width: 100%; border-collapse: collapse; margin: 0 auto; max-width: 800px; border: 1px solid #000; }
+            th, td { border: 1px solid #000; padding: 12px 10px; text-align: left; vertical-align: middle; }
+            .center { text-align: center; }
+            .bold { font-weight: bold; }
+            .header-logo { width: 25%; text-align: center; }
+            .header-logo div { border: 1px dashed #ccc; width: 60px; height: 80px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; }
+            .header-title { width: 45%; text-align: center; }
+            .header-title h2 { margin: 0 0 10px 0; font-size: 20px; }
+            .header-title h3 { margin: 0; font-size: 16px; border-top: 1px solid #000; padding-top: 10px; }
+            .header-meta { width: 30%; padding: 0 !important; }
+            .header-meta table { width: 100%; border: none; height: 100%; }
+            .header-meta td { border: none; border-bottom: 1px solid #000; padding: 8px; font-size: 13px; }
+            .header-meta tr:last-child td { border-bottom: none; }
+            .col-header { text-align: center; font-size: 12px; color: #333; font-weight: bold; }
+            .office-use-cell { height: 100px; vertical-align: top; padding: 15px; }
+            @media print { body { padding: 0; } table { max-width: 100%; } .header-logo div { border: none; } }
+        </style>
+    `);
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(`
+        <table>
+            <tr>
+                <td class="header-logo" rowspan="2"><div>LOGO</div></td>
+                <td class="header-title bold" rowspan="2">
+                    <h2>AMITY UNIVERSITY HARYANA</h2>
+                    <h3>CONSUMABLE ISSUE SLIP</h3>
+                </td>
+                <td class="header-meta">
+                    <table cellspacing="0" cellpadding="0">
+                        <tr><td>Consumption No:<br>ITAUMANESAR _________</td></tr>
+                        <tr><td>FORM NO: ${tx.form_no || "_________"}</td></tr>
+                        <tr><td>Date: &nbsp;&nbsp;&nbsp;${tx.date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+            <tr><td style="display:none;"></td></tr>
+            <tr class="col-header">
+                <td width="8%">SR NO.</td><td width="25%">PRINTER Details</td><td width="20%">TAG NO.</td>
+                <td width="22%">Item name</td><td width="10%">Quantity</td><td width="15%">Purpose</td>
+            </tr>
+            ${itemRows}
+            <tr>
+                <td colspan="2">Employee Code</td><td class="center bold">${empCode}</td>
+                <td class="center" colspan="3">HOD</td>
+            </tr>
+            <tr>
+                <td colspan="2">Department</td><td class="center bold" style="color:#0ea5e9;">${dept}</td>
+                <td class="center" colspan="1">Employee ID</td><td colspan="2"></td>
+            </tr>
+            <tr>
+                <td colspan="2">Name</td><td class="center bold">${employeeName}</td>
+                <td class="center" colspan="1">Name</td><td colspan="2"></td>
+            </tr>
+            <tr>
+                <td colspan="2">Location</td><td class="center bold" style="color:#0ea5e9;">${loc}</td>
+                <td rowspan="2" colspan="3" class="center" style="vertical-align: bottom; padding-bottom: 20px;">
+                    <span style="color: #ccc;">(Stamp / Signature)</span><br><br><br>Signature with Stamp
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2" style="height: 60px; vertical-align: bottom; padding-bottom: 20px;">Signature</td><td></td>
+            </tr>
+            <tr>
+                <td colspan="6" class="office-use-cell">
+                    <span class="bold">For office use only:</span><br><br><br>
+                    Stock entry no. _______________________________________________________<br><br><br>
+                    Entry made by: _________________________________
+                </td>
+            </tr>
+        </table>
+    `);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    setTimeout(() => { printWindow.print(); }, 500);
+}
+
+// ==========================================
+// 4. GENERAL CONSUMABLE REQUISITION FORM
+// ==========================================
+function generateGeneralConsumableSlip(txGroup, snipeData) {
+    const tx = txGroup[0];
+    let empCode = tx.emp_id ? tx.emp_id.split(' - ')[0].trim() : "";
+    let employeeName = tx.from_to || ""; 
+    let dept = snipeData.department || "";
+
+    let itemRows = "";
+    txGroup.forEach((item, index) => {
+        let srNo = (index + 1).toString().padStart(2, '0');
+        itemRows += `
+            <tr style="height: 40px; text-align: center; font-family: 'Arial', sans-serif;">
+                <td>${srNo}</td>
+                <td style="text-align: left;">${item.item_name}</td>
+                <td>${item.purpose || ''}</td>
+                <td>${item.qty}</td>
+            </tr>
+        `;
+    });
+
+    const printWindow = window.open('', '', 'height=900,width=800');
+    printWindow.document.write('<html><head><title>Consumable Requisition Form</title>');
+    printWindow.document.write(`
+        <style>
+            body { font-family: 'Times New Roman', Times, serif; padding: 20px; color: #000; font-size: 16px; }
+            table { width: 100%; border-collapse: collapse; margin: 0 auto; max-width: 800px; border: 1px solid #000; }
+            th, td { border: 1px solid #000; padding: 8px 12px; text-align: left; vertical-align: middle; }
+            .header-logo { width: 20%; text-align: center; }
+            .header-logo div { border: 1px dashed #ccc; width: 60px; height: 80px; margin: 0 auto; display: flex; align-items: center; justify-content: center; font-size: 10px; color: #999; }
+            .header-title { width: 50%; text-align: center; font-weight: bold; }
+            .header-title h2 { margin: 0 0 10px 0; font-size: 22px; }
+            .header-title h3 { margin: 0; font-size: 18px; font-weight: normal; border-top: 1px solid #000; padding-top: 10px; }
+            .header-meta { width: 30%; padding: 0 !important; }
+            .header-meta table { width: 100%; border: none; height: 100%; }
+            .header-meta td { border: none; border-bottom: 1px solid #000; padding: 8px; font-size: 14px; }
+            .header-meta tr:last-child td { border-bottom: none; }
+            .col-header td { text-align: center; font-weight: bold; font-size: 15px; }
+            .sig-section { display: flex; justify-content: space-between; max-width: 800px; margin: 30px auto 20px auto; font-size: 16px; font-weight: bold; line-height: 2; }
+            .sig-left, .sig-right { width: 45%; }
+            .line-fill { display: inline-block; border-bottom: 1px solid #000; width: 200px; margin-left: 10px; font-weight: normal; font-family: 'Arial', sans-serif; color: #0ea5e9; }
+            .divider { border-bottom: 2px solid #000; max-width: 800px; margin: 0 auto 20px auto; }
+            .office-use { max-width: 800px; margin: 0 auto; font-size: 16px; font-weight: bold; line-height: 2.5; }
+            @media print { body { padding: 0; } table { max-width: 100%; } .header-logo div { border: none; } .line-fill { color: #000; } }
+        </style>
+    `);
+    printWindow.document.write('</head><body>');
+    printWindow.document.write(`
+        <table>
+            <tr>
+                <td class="header-logo"><div>LOGO</div></td>
+                <td class="header-title">
+                    <h2>AMITY UNIVERSITY<br>HARYANA</h2>
+                    <h3>Consumable Requisition Form.</h3>
+                </td>
+                <td class="header-meta">
+                    <table cellspacing="0" cellpadding="0">
+                        <tr><td>Consumption No:<br>ITAUMANESAR:-</td></tr>
+                        <tr><td>FORM NO: ${tx.form_no || "_________________"}</td></tr>
+                        <tr><td>Date : ${tx.date}</td></tr>
+                    </table>
+                </td>
+            </tr>
+            
+            <tr class="col-header">
+                <td width="10%">Sr.No.</td>
+                <td width="40%">Consumable<br>Item Name</td>
+                <td width="30%">Purpose</td>
+                <td width="20%">Quantity</td>
+            </tr>
+            
+            ${itemRows}
+            
+        </table>
+
+        <div class="sig-section">
+            <div class="sig-left">
+                <div>Emp Code &nbsp;&nbsp;&nbsp;: <span class="line-fill" style="color:#000;">${empCode}</span></div>
+                <div>User Name &nbsp;&nbsp;: <span class="line-fill" style="color:#000;">${employeeName}</span></div>
+                <div>Department : <span class="line-fill">${dept}</span></div>
+                <div>Signature &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;: <span class="line-fill"></span></div>
+                <div style="margin-top: 15px;">Date: <span class="line-fill" style="color:#000;">${tx.date}</span></div>
+            </div>
+            <div class="sig-right">
+                <div style="margin-bottom: 25px;">HOD</div>
+                <div>Name: <span class="line-fill" style="width: 250px;"></span></div>
+                <div>Signature : <span class="line-fill" style="width: 225px;"></span></div>
+                <div style="margin-top: 15px;">Stamp :</div>
+            </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="office-use">
+            <div>For office use only</div>
+            <div>Stock entry no:- <span class="line-fill" style="width: 300px; color:#000;"></span></div>
+            <div>Entry Made by : <span class="line-fill" style="width: 300px; color:#000;"></span></div>
+        </div>
+    `);
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    setTimeout(() => { printWindow.print(); }, 500);
+}
+</script>
+  
+</body>
+</html>

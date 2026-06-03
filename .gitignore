@@ -1,0 +1,11 @@
+# Ignore database configuration and passwords
+config.php
+docker-compose.yml
+
+# Ignore database backups and raw data
+*.sql
+*.json
+temp_restore_*/
+
+# Ignore image uploads
+uploads/
